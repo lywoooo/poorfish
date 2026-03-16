@@ -67,6 +67,45 @@ public class MoveGenerator
     }
 
     private static List<Vector2Int> getTargetsForPiece(BoardState state, Vector2Int initialPos, PieceType type, PieceColor color) {
+        switch(type) {
+            case PieceType.Bishop:
+                return bishopRookMoves(state, initialPos, color, bishopDirections);
+
+            case PieceType.Rook:
+                return bishopRookMoves(state, initialPos, color, rookDirections);
+
+            case PieceType.Queen:
+                var queenMoves = bishopRookMoves(state, initialPos, color, bishopDirections);
+                queenMoves.AddRange(bishopRookMoves(state, initialPos, color, rookDirections));
+                return queenMoves;
+
+            case PieceType.King:
+                return kingMoves(state, initialPos, color);
+
+            case PieceType.Knight:
+                return knightMoves(state, initialPos, color);
+
+            case PieceType.Pawn:
+                return pawnMoves(state, initialPos, color);
+
+            default:
+                return new List<Vector2Int>();
+        }
+    }
+
+    private static List<Vector2Int> bishopRookMoves(BoardState state, Vector2Int initialPos, PieceColor color, Vector2Int[] directions) {
+
+    }
+
+    private static List<Vector2Int> kingMoves(BoardState state, Vector2Int initialPos, PieceColor color) {
+
+    }
+
+    privatte static List<Vector2Int> knightMoves(BoardState state, Vector2Int initialPos PieceColor color) {
+
+    }
+
+    private static List<Vector2Int> PawnMoves(BoardState state, Vector2Int from, PieceColor color) {
 
     }
 }

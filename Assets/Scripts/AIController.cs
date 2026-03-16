@@ -51,7 +51,7 @@ public class AIController : MonoBehaviour
 
                 prospective.switchTurn();
 
-                int score = MinimaxAB.Search(prospective, searchDepth - 1, MinimaxAB.NEG_INF, MinimaxAB.POS_INF);
+                int score = MinimaxAB.search(prospective, searchDepth - 1, MinimaxAB.NEG_INF, MinimaxAB.POS_INF);
 
                 bool prospectiveScoreIsBetter = aiStartColorBlack ? score < bestScore : score > bestScore;
 
