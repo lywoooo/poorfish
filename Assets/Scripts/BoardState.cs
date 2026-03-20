@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Purchasing;
 
 public enum PieceColor { White, Black }
 
@@ -14,6 +15,16 @@ public class BoardState
         {
             type = typeInputted;
             color = colorInputted;
+        }
+
+        public PieceType getPieceType()
+        {
+            return type;
+        }
+
+        public PieceColor GetPieceColor()
+        {
+            return color;
         }
     }
 
@@ -102,4 +113,6 @@ public class BoardState
             }
         return new Vector2Int(-1, -1);
     }
+
+    public 
 }

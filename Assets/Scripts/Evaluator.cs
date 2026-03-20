@@ -1,3 +1,5 @@
+using TMPro;
+
 public static class Evaluator
 {
     // source chessprogramming wiki SEF for values
@@ -18,10 +20,10 @@ public static class Evaluator
         {
             for (int col = 0; col < 8; col++)
             {
-                Piece piece = state.GetPiece(col, row);
-                if (piece == null || piece.Type == PieceType.King) continue;
+                var piece = state.whatIsAt(col, row);
+                if (piece == null || piece.Value.getPieceType() == PieceType.King) continue;
 
-                totalMaterial += GetMaterialValue(piece.Type);
+                totalMaterial += GetMaterialValue(piece.Value.getPieceType());
             }
         }
 
@@ -30,6 +32,15 @@ public static class Evaluator
 
     public static int Evaluate(BoardState state)
     {
+        const int checkmate = 100000;
+
+        // check checkmate
+        if (MoveGenerator.isCheckmate(state, PieceColor.White)) return checkmate;
+        if (MoveGenerator.isCheckmate(state, PieceColor.Black)) return -checkmate;
+
+        // check stalemate
+        if (MoveGenerator.isStalemate(state, PieceColor.White) || MoveGenerator.isStalemate(state, PieceColor.White)) return 0;
+
         bool endgame = IsEndgame(state);
         int score = 0;
 
@@ -37,13 +48,18 @@ public static class Evaluator
         {
             for (int col = 0; col < 8; col++)
             {
-                Piece piece = state.GetPiece(col, row);
+                BoardState.BoardPiece? piece = state.whatIsAt(col, row);
                 if (piece == null) continue;
 
-                int material = GetMaterialValue(piece.Type);
-                int pst = PieceSquareTables.GetPST(piece.Type, piece.Color, col, row, endgame);
+                var p = piece.Value;
 
-                if (piece.Color == PieceColor.White)
+                PieceType type = p.getPieceType();
+                PieceColor color = p.GetPieceColor();
+
+                int material = GetMaterialValue(type);
+                int pst = PieceSquareTables.GetPST(type, color, col, row, endgame);
+
+                if (color == PieceColor.White)
                     score += material + pst;
                 else
                     score -= material + pst;
