@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class AIController : MonoBehaviour
@@ -10,6 +9,7 @@ public class AIController : MonoBehaviour
 
     // 4 ply search depth
     public int searchDepth = 4;
+    public float maxThinkTimeSeconds = 1.5f;
 
     // Move delay for cool factor
     public float moveDelay = 0.5f;
@@ -31,55 +31,89 @@ public class AIController : MonoBehaviour
         yield return new WaitForSeconds(moveDelay);
 
         var gm = GameManager.instance;
+        string aiColor = aiStartColorBlack ? "black" : "white";
         PieceColor aiColorEnum = aiStartColorBlack ? PieceColor.Black : PieceColor.White;
         GameObject bestPiece = null;
-        Vector2Int bestDestination = Vector2Int.zero;
+        ChessMove bestMove = default;
         int bestScore = aiStartColorBlack ? MinimaxAB.POS_INF : MinimaxAB.NEG_INF;
-        bool moveFound = false;
+        int completedDepth = 0;
 
         BoardState liveState = BoardState.boardSnapshot();
+        var legalMoves = MoveGenerator.getLegalMoves(liveState, aiColorEnum);
 
-        foreach(GameObject piece in gm.currentPlayer.pieces) {
-            if(piece == null) continue;
+        if (legalMoves.Count == 0)
+        {
+            if (MoveGenerator.isInCheck(liveState, aiColorEnum))
+            {
+                Debug.Log(aiColor + " is checkmated.");
+            }
+            else
+            {
+                Debug.Log("stalemate");
+            }
 
-            Vector2Int initialPos = gm.GridForPiece(piece);
-            List<Vector2Int> destinations = gm.MovesForPiece(piece);
+            var tileSelector = GetComponent<TileSelector>();
+            var moveSelector = GetComponent<MoveSelector>();
+            if (tileSelector != null) tileSelector.enabled = false;
+            if (moveSelector != null) moveSelector.enabled = false;
+            enabled = false;
+            calculatingMove = false;
+            yield break;
+        }
 
-            foreach(Vector2Int destination in destinations) {
+        MinimaxAB.BeginTimedSearch(maxThinkTimeSeconds);
+
+        for (int depth = 1; depth <= searchDepth; depth++)
+        {
+            GameObject depthBestPiece = null;
+            ChessMove depthBestMove = default;
+            int depthBestScore = aiStartColorBlack ? MinimaxAB.POS_INF : MinimaxAB.NEG_INF;
+
+            foreach (ChessMove move in legalMoves)
+            {
                 var prospective = liveState.cloneBoard();
-                prospective.applyMove(new ChessMove(initialPos, destination));
-
-                if(MoveGenerator.isInCheck(prospective, aiColorEnum)) continue;
-
+                prospective.applyMove(move);
                 prospective.switchTurn();
 
-                int score = MinimaxAB.search(prospective, searchDepth - 1, MinimaxAB.NEG_INF, MinimaxAB.POS_INF);
+                int score = MinimaxAB.search(prospective, depth - 1, MinimaxAB.NEG_INF, MinimaxAB.POS_INF);
+                if (MinimaxAB.TimedOut())
+                {
+                    break;
+                }
 
-                bool prospectiveScoreIsBetter = aiStartColorBlack ? score < bestScore : score > bestScore;
+                bool prospectiveScoreIsBetter = aiStartColorBlack ? score < depthBestScore : score > depthBestScore;
 
-                if(prospectiveScoreIsBetter || !moveFound) {
-                    bestScore = score;
-                    bestPiece = piece;
-                    bestDestination = destination;
-                    moveFound = true;
+                if (prospectiveScoreIsBetter || depthBestPiece == null)
+                {
+                    depthBestScore = score;
+                    depthBestMove = move;
+                    depthBestPiece = gm.PieceAtGrid(move.from);
                 }
             }
+
+            if (MinimaxAB.TimedOut())
+            {
+                break;
+            }
+
+            completedDepth = depth;
+            bestScore = depthBestScore;
+            bestMove = depthBestMove;
+            bestPiece = depthBestPiece;
         }
 
-        if(moveFound && bestPiece != null) {
-            Vector2Int fromPos = gm.GridForPiece(bestPiece);
+        MinimaxAB.EndTimedSearch();
+
+        if(bestPiece != null) {
+            Vector2Int fromPos = bestMove.from;
             gm.SelectPiece(bestPiece);
 
-            if(gm.PieceAtGrid(bestDestination) != null) gm.CapturePieceAt(bestDestination);
+            if(gm.PieceAtGrid(bestMove.to) != null) gm.CapturePieceAt(bestMove.to);
 
-            gm.Move(bestPiece, bestDestination);
+            gm.Move(bestPiece, bestMove.to);
             gm.DeselectPiece(bestPiece);
 
-            Debug.Log(gm.currentPlayer.name + " (AI) played " + fromPos + " to " + bestDestination + " with evaluated score of " + bestScore);
-        }
-
-        else {
-            Debug.Log("no legal moves (i.e. a checkmate or stalemate is predicted)");
+            Debug.Log(gm.currentPlayer.name + " (AI) played " + fromPos + " to " + bestMove.to + " with evaluated score of " + bestScore + " at depth " + completedDepth);
         }
 
         gm.NextPlayer();

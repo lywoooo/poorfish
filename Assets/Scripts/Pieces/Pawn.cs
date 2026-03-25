@@ -35,29 +35,31 @@ public class Pawn : Piece
 {
     public override List<Vector2Int> MoveLocations(Vector2Int gridPoint)
     {
-        List<Vector2Int> locations = new List<Vector2Int>();
+        GameManager gameManager = GameManager.instance;
+        List<Vector2Int> locations = new List<Vector2Int>(4);
 
-        int forwardDirection = GameManager.instance.currentPlayer.forward;
+        int forwardDirection = gameManager.currentPlayer.forward;
         Vector2Int forwardOne = new Vector2Int(gridPoint.x, gridPoint.y + forwardDirection);
-        if (GameManager.instance.PieceAtGrid(forwardOne) == false)
+        bool canAdvanceOne = gameManager.PieceAtGrid(forwardOne) == false;
+        if (canAdvanceOne)
         {
             locations.Add(forwardOne);
         }
 
         Vector2Int forwardTwo = new Vector2Int(gridPoint.x, gridPoint.y + 2 * forwardDirection);
-        if (GameManager.instance.HasPawnMoved(gameObject) == false && GameManager.instance.PieceAtGrid(forwardTwo) == false)
+        if (canAdvanceOne && gameManager.HasPawnMoved(gameObject) == false && gameManager.PieceAtGrid(forwardTwo) == false)
         {
             locations.Add(forwardTwo);
         }
 
         Vector2Int forwardRight = new Vector2Int(gridPoint.x + 1, gridPoint.y + forwardDirection);
-        if (GameManager.instance.PieceAtGrid(forwardRight))
+        if (gameManager.PieceAtGrid(forwardRight))
         {
             locations.Add(forwardRight);
         }
 
         Vector2Int forwardLeft = new Vector2Int(gridPoint.x - 1, gridPoint.y + forwardDirection);
-        if (GameManager.instance.PieceAtGrid(forwardLeft))
+        if (gameManager.PieceAtGrid(forwardLeft))
         {
             locations.Add(forwardLeft);
         }

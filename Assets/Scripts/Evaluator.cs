@@ -1,5 +1,3 @@
-using TMPro;
-
 public static class Evaluator
 {
     // source chessprogramming wiki SEF for values
@@ -21,9 +19,9 @@ public static class Evaluator
             for (int col = 0; col < 8; col++)
             {
                 var piece = state.whatIsAt(col, row);
-                if (piece == null || piece.Value.getPieceType() == PieceType.King) continue;
+                if (piece == null || piece.Value.type == PieceType.King) continue;
 
-                totalMaterial += GetMaterialValue(piece.Value.getPieceType());
+                totalMaterial += GetMaterialValue(piece.Value.type);
             }
         }
 
@@ -44,8 +42,8 @@ public static class Evaluator
 
                 var p = piece.Value;
 
-                PieceType type = p.getPieceType();
-                PieceColor color = p.GetPieceColor();
+                PieceType type = p.type;
+                PieceColor color = p.color;
 
                 int material = GetMaterialValue(type);
                 int pst = PieceSquareTables.GetPST(type, color, col, row, endgame);

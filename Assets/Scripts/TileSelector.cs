@@ -28,8 +28,6 @@
  * THE SOFTWARE.
  */
 
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class TileSelector : MonoBehaviour
@@ -37,9 +35,15 @@ public class TileSelector : MonoBehaviour
     public GameObject tileHighlightPrefab;
 
     private GameObject tileHighlight;
+    private Camera cachedCamera;
+    private GameManager cachedGameManager;
+    private MoveSelector cachedMoveSelector;
 
     void Start ()
     {
+        cachedCamera = Camera.main;
+        cachedGameManager = GameManager.instance;
+        cachedMoveSelector = GetComponent<MoveSelector>();
         Vector2Int gridPoint = Geometry.GridPoint(0, 0);
         Vector3 point = Geometry.PointFromGrid(gridPoint);
         tileHighlight = Instantiate(tileHighlightPrefab, point, Quaternion.identity, gameObject.transform);
@@ -48,7 +52,16 @@ public class TileSelector : MonoBehaviour
 
     void Update ()
     {
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        if (cachedCamera == null)
+        {
+            cachedCamera = Camera.main;
+            if (cachedCamera == null)
+            {
+                return;
+            }
+        }
+
+        Ray ray = cachedCamera.ScreenPointToRay(Input.mousePosition);
 
         RaycastHit hit;
         if (Physics.Raycast(ray, out hit))
@@ -60,10 +73,10 @@ public class TileSelector : MonoBehaviour
             tileHighlight.transform.position = Geometry.PointFromGrid(gridPoint);
             if (Input.GetMouseButtonDown(0))
             {
-                GameObject selectedPiece = GameManager.instance.PieceAtGrid(gridPoint);
-                if (GameManager.instance.DoesPieceBelongToCurrentPlayer(selectedPiece))
+                GameObject selectedPiece = cachedGameManager.PieceAtGrid(gridPoint);
+                if (cachedGameManager.DoesPieceBelongToCurrentPlayer(selectedPiece))
                 {
-                    GameManager.instance.SelectPiece(selectedPiece);
+                    cachedGameManager.SelectPiece(selectedPiece);
                     // Reference Point 1: add ExitState call here later
                     ExitState(selectedPiece);
                 }
@@ -84,7 +97,6 @@ public class TileSelector : MonoBehaviour
     {
         this.enabled = false;
         tileHighlight.SetActive(false);
-        MoveSelector move = GetComponent<MoveSelector>();
-        move.EnterState(movingPiece);
+        cachedMoveSelector.EnterState(movingPiece);
     }
 }

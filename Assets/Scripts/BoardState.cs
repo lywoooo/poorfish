@@ -1,12 +1,13 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public enum PieceColor { White, Black }
 
 public class BoardState
 {
+    private const ulong HashOffset = 1469598103934665603UL;
+    private const ulong HashPrime = 1099511628211UL;
+
     public struct BoardPiece {
         public PieceType type;
         public PieceColor color;
@@ -17,15 +18,6 @@ public class BoardState
             color = colorInputted;
         }
 
-        public PieceType getPieceType()
-        {
-            return type;
-        }
-
-        public PieceColor GetPieceColor()
-        {
-            return color;
-        }
     }
 
     public BoardPiece?[,] board;
@@ -39,22 +31,17 @@ public class BoardState
         var gm = GameManager.instance;
         var state = new BoardState();
 
-        Player whitePlayer = gm.currentPlayer.name == "white" ? gm.currentPlayer : gm.otherPlayer;
-        Player blackPlayer = gm.currentPlayer.name == "black" ? gm.currentPlayer : gm.otherPlayer;
-
         for(int col = 0; col < 8; col++) {
             for(int row = 0; row < 8; row++) {
                 GameObject pieceSnapshotted = gm.PieceAtGrid(new Vector2Int(col, row));
 
                 if(pieceSnapshotted == null) continue;
 
-                PieceColor pieceSnapshottedColor = whitePlayer.pieces.Contains(pieceSnapshotted) ? PieceColor.White : PieceColor.Black;
-
-                state.board[col, row] = new BoardPiece(pieceSnapshotted.GetComponent<Piece>().type, pieceSnapshottedColor);
+                state.board[col, row] = new BoardPiece(gm.GetPieceType(pieceSnapshotted), gm.GetPieceColor(pieceSnapshotted));
             }
         }
 
-        state.currentTurn = gm.currentPlayer.name == "white" ? PieceColor.White : PieceColor.Black;
+        state.currentTurn = gm.CurrentTurnColor;
 
         return state;
     }
@@ -62,7 +49,13 @@ public class BoardState
     public BoardState cloneBoard() {
         var clone = new BoardState {currentTurn = currentTurn};
 
-        Array.Copy(board, clone.board, board.Length);
+        for (int col = 0; col < 8; col++)
+        {
+            for (int row = 0; row < 8; row++)
+            {
+                clone.board[col, row] = board[col, row];
+            }
+        }
 
         return clone;
     }
@@ -82,13 +75,13 @@ public class BoardState
         }
     }
 
-    public bool inBounds(int col, int row)
+    public static bool InBounds(int col, int row)
     {
         return col >= 0 && col <= 7 && row >= 0 && row <= 7;
     }
 
     public BoardPiece? whatIsAt(int col, int row) {
-        return inBounds(col, row) ? board[col, row] : null;
+        return InBounds(col, row) ? board[col, row] : null;
     }
 
     public void switchTurn() {
@@ -108,5 +101,31 @@ public class BoardState
                 if (currentTile.HasValue && currentTile.Value.type == PieceType.King && currentTile.Value.color == color) return new Vector2Int(col, row);
             }
         return new Vector2Int(-1, -1);
+    }
+
+    public ulong ComputeHash()
+    {
+        ulong hash = HashOffset;
+
+        for (int col = 0; col < 8; col++)
+        {
+            for (int row = 0; row < 8; row++)
+            {
+                ulong encoded = 0UL;
+                var piece = board[col, row];
+
+                if (piece.HasValue)
+                {
+                    encoded = 1UL + (ulong)piece.Value.type + ((ulong)piece.Value.color << 3);
+                }
+
+                hash ^= encoded + (ulong)(col * 8 + row);
+                hash *= HashPrime;
+            }
+        }
+
+        hash ^= (ulong)currentTurn + 97UL;
+        hash *= HashPrime;
+        return hash;
     }
 }

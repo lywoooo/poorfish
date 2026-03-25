@@ -41,11 +41,18 @@ public class MoveSelector : MonoBehaviour
     private GameObject tileHighlight;
     private GameObject movingPiece;
     private List<Vector2Int> moveLocations;
+    private HashSet<Vector2Int> moveLocationLookup;
     private List<GameObject> locationHighlights;
+    private Camera cachedCamera;
+    private GameManager cachedGameManager;
+    private TileSelector cachedTileSelector;
 
     void Start ()
     {
         this.enabled = false;
+        cachedCamera = Camera.main;
+        cachedGameManager = GameManager.instance;
+        cachedTileSelector = GetComponent<TileSelector>();
         tileHighlight = Instantiate(tileHighlightPrefab, Geometry.PointFromGrid(new Vector2Int(0, 0)),
             Quaternion.identity, gameObject.transform);
         tileHighlight.SetActive(false);
@@ -53,7 +60,16 @@ public class MoveSelector : MonoBehaviour
 
     void Update ()
     {
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        if (cachedCamera == null)
+        {
+            cachedCamera = Camera.main;
+            if (cachedCamera == null)
+            {
+                return;
+            }
+        }
+
+        Ray ray = cachedCamera.ScreenPointToRay(Input.mousePosition);
 
         RaycastHit hit;
         if (Physics.Raycast(ray, out hit))
@@ -65,20 +81,39 @@ public class MoveSelector : MonoBehaviour
             tileHighlight.transform.position = Geometry.PointFromGrid(gridPoint);
             if (Input.GetMouseButtonDown(0))
             {
-                // Reference Point 2: check for valid move location
-                if (!moveLocations.Contains(gridPoint))
+                GameObject clickedPiece = cachedGameManager.PieceAtGrid(gridPoint);
+
+                if (!cachedGameManager.TouchMoveEnabled() && cachedGameManager.DoesPieceBelongToCurrentPlayer(clickedPiece))
                 {
+                    if (clickedPiece == movingPiece)
+                    {
+                        CancelMove();
+                    }
+                    else
+                    {
+                        ReselectPiece(clickedPiece);
+                    }
                     return;
                 }
 
-                if (GameManager.instance.PieceAtGrid(gridPoint) == null)
+                // Reference Point 2: check for valid move location
+                if (!moveLocationLookup.Contains(gridPoint))
                 {
-                    GameManager.instance.Move(movingPiece, gridPoint);
+                    if (!cachedGameManager.TouchMoveEnabled())
+                    {
+                        CancelMove();
+                    }
+                    return;
+                }
+
+                if (cachedGameManager.PieceAtGrid(gridPoint) == null)
+                {
+                    cachedGameManager.Move(movingPiece, gridPoint);
                 }
                 else
                 {
-                    GameManager.instance.CapturePieceAt(gridPoint);
-                    GameManager.instance.Move(movingPiece, gridPoint);
+                    cachedGameManager.CapturePieceAt(gridPoint);
+                    cachedGameManager.Move(movingPiece, gridPoint);
                 }
                 // Reference Point 3: capture enemy piece here later
                 ExitState();
@@ -93,15 +128,29 @@ public class MoveSelector : MonoBehaviour
     private void CancelMove()
     {
         this.enabled = false;
+        ClearHighlights();
+        cachedGameManager.DeselectPiece(movingPiece);
+        movingPiece = null;
+        cachedTileSelector.EnterState();
+    }
 
-        foreach (GameObject highlight in locationHighlights)
+    private void ReselectPiece(GameObject piece)
+    {
+        ClearHighlights();
+        cachedGameManager.DeselectPiece(movingPiece);
+        movingPiece = piece;
+        cachedGameManager.SelectPiece(movingPiece);
+        moveLocations = cachedGameManager.MovesForPiece(movingPiece);
+        moveLocationLookup = new HashSet<Vector2Int>(moveLocations);
+        locationHighlights = new List<GameObject>(moveLocations.Count);
+
+        foreach (Vector2Int loc in moveLocations)
         {
-            Destroy(highlight);
+            GameObject highlight = cachedGameManager.PieceAtGrid(loc)
+                ? Instantiate(attackLocationPrefab, Geometry.PointFromGrid(loc), Quaternion.identity, gameObject.transform)
+                : Instantiate(moveLocationPrefab, Geometry.PointFromGrid(loc), Quaternion.identity, gameObject.transform);
+            locationHighlights.Add(highlight);
         }
-
-        GameManager.instance.DeselectPiece(movingPiece);
-        TileSelector selector = GetComponent<TileSelector>();
-        selector.EnterState();
     }
 
     public void EnterState(GameObject piece)
@@ -109,8 +158,9 @@ public class MoveSelector : MonoBehaviour
         movingPiece = piece;
         this.enabled = true;
 
-        moveLocations = GameManager.instance.MovesForPiece(movingPiece);
-        locationHighlights = new List<GameObject>();
+        moveLocations = cachedGameManager.MovesForPiece(movingPiece);
+        moveLocationLookup = new HashSet<Vector2Int>(moveLocations);
+        locationHighlights = new List<GameObject>(moveLocations.Count);
 
         if (moveLocations.Count == 0)
         {
@@ -120,7 +170,7 @@ public class MoveSelector : MonoBehaviour
         foreach (Vector2Int loc in moveLocations)
         {
             GameObject highlight;
-            if (GameManager.instance.PieceAtGrid(loc))
+            if (cachedGameManager.PieceAtGrid(loc))
             {
                 highlight = Instantiate(attackLocationPrefab, Geometry.PointFromGrid(loc), Quaternion.identity, gameObject.transform);
             }
@@ -135,15 +185,31 @@ public class MoveSelector : MonoBehaviour
     private void ExitState()
     {
         this.enabled = false;
-        TileSelector selector = GetComponent<TileSelector>();
         tileHighlight.SetActive(false);
-        GameManager.instance.DeselectPiece(movingPiece);
+        cachedGameManager.DeselectPiece(movingPiece);
         movingPiece = null;
-        GameManager.instance.NextPlayer();
-        selector.EnterState();
+        cachedGameManager.NextPlayer();
+        cachedTileSelector.EnterState();
         foreach (GameObject highlight in locationHighlights)
         {
             Destroy(highlight);
         }
+
+        moveLocationLookup?.Clear();
+    }
+
+    private void ClearHighlights()
+    {
+        if (locationHighlights != null)
+        {
+            foreach (GameObject highlight in locationHighlights)
+            {
+                Destroy(highlight);
+            }
+
+            locationHighlights.Clear();
+        }
+
+        moveLocationLookup?.Clear();
     }
 }

@@ -36,6 +36,7 @@ public class GameManager : MonoBehaviour
     public static GameManager instance;
 
     public Board board;
+    public bool touchMoveEnabled = true;
 
     public GameObject whiteKing;
     public GameObject whiteQueen;
@@ -52,12 +53,16 @@ public class GameManager : MonoBehaviour
     public GameObject blackPawn;
 
     private GameObject[,] pieces;
-    private List<GameObject> movedPawns;
+    private HashSet<GameObject> movedPawns;
+    private readonly Dictionary<GameObject, Vector2Int> piecePositions = new Dictionary<GameObject, Vector2Int>(32);
+    private readonly Dictionary<GameObject, Piece> pieceComponentCache = new Dictionary<GameObject, Piece>(32);
+    private readonly Dictionary<GameObject, PieceColor> pieceColors = new Dictionary<GameObject, PieceColor>(32);
 
     private Player white;
     private Player black;
     public Player currentPlayer;
     public Player otherPlayer;
+    public PieceColor CurrentTurnColor => currentPlayer == white ? PieceColor.White : PieceColor.Black;
 
     void Awake()
     {
@@ -67,7 +72,7 @@ public class GameManager : MonoBehaviour
     void Start ()
     {
         pieces = new GameObject[8, 8];
-        movedPawns = new List<GameObject>();
+        movedPawns = new HashSet<GameObject>();
 
         white = new Player("white", true);
         black = new Player("black", false);
@@ -114,6 +119,9 @@ public class GameManager : MonoBehaviour
         GameObject pieceObject = board.AddPiece(prefab, col, row);
         player.pieces.Add(pieceObject);
         pieces[col, row] = pieceObject;
+        piecePositions[pieceObject] = new Vector2Int(col, row);
+        pieceComponentCache[pieceObject] = pieceObject.GetComponent<Piece>();
+        pieceColors[pieceObject] = player == white ? PieceColor.White : PieceColor.Black;
     }
 
     public void SelectPieceAtGrid(Vector2Int gridPoint)
@@ -127,22 +135,30 @@ public class GameManager : MonoBehaviour
 
     public List<Vector2Int> MovesForPiece(GameObject pieceObject)
     {
-        Piece piece = pieceObject.GetComponent<Piece>();
         Vector2Int gridPoint = GridForPiece(pieceObject);
-        List<Vector2Int> locations = piece.MoveLocations(gridPoint);
+        if (gridPoint.x < 0)
+        {
+            return new List<Vector2Int>(0);
+        }
 
-        // filter out offboard locations
-        locations.RemoveAll(gp => gp.x < 0 || gp.x > 7 || gp.y < 0 || gp.y > 7);
+        BoardState state = BoardState.boardSnapshot();
+        List<ChessMove> legalMoves = MoveGenerator.getLegalMoves(state, CurrentTurnColor);
+        List<Vector2Int> locations = new List<Vector2Int>(legalMoves.Count);
 
-        // filter out locations with friendly piece
-        locations.RemoveAll(gp => FriendlyPieceAt(gp));
+        foreach (ChessMove move in legalMoves)
+        {
+            if (move.from == gridPoint)
+            {
+                locations.Add(move.to);
+            }
+        }
 
         return locations;
     }
 
     public void Move(GameObject piece, Vector2Int gridPoint)
     {
-        Piece pieceComponent = piece.GetComponent<Piece>();
+        Piece pieceComponent = GetPieceComponent(piece);
         if (pieceComponent.type == PieceType.Pawn && !HasPawnMoved(piece))
         {
             movedPawns.Add(piece);
@@ -151,6 +167,7 @@ public class GameManager : MonoBehaviour
         Vector2Int startGridPoint = GridForPiece(piece);
         pieces[startGridPoint.x, startGridPoint.y] = null;
         pieces[gridPoint.x, gridPoint.y] = piece;
+        piecePositions[piece] = gridPoint;
         board.MovePiece(piece, gridPoint);
     }
 
@@ -167,14 +184,24 @@ public class GameManager : MonoBehaviour
     public void CapturePieceAt(Vector2Int gridPoint)
     {
         GameObject pieceToCapture = PieceAtGrid(gridPoint);
-        if (pieceToCapture.GetComponent<Piece>().type == PieceType.King)
+        if (pieceToCapture == null)
+        {
+            return;
+        }
+
+        if (GetPieceComponent(pieceToCapture).type == PieceType.King)
         {
             Debug.Log(currentPlayer.name + " wins!");
             Destroy(board.GetComponent<TileSelector>());
             Destroy(board.GetComponent<MoveSelector>());
         }
         currentPlayer.capturedPieces.Add(pieceToCapture);
+        otherPlayer.pieces.Remove(pieceToCapture);
         pieces[gridPoint.x, gridPoint.y] = null;
+        movedPawns.Remove(pieceToCapture);
+        piecePositions.Remove(pieceToCapture);
+        pieceComponentCache.Remove(pieceToCapture);
+        pieceColors.Remove(pieceToCapture);
         Destroy(pieceToCapture);
     }
 
@@ -190,7 +217,7 @@ public class GameManager : MonoBehaviour
 
     public bool DoesPieceBelongToCurrentPlayer(GameObject piece)
     {
-        return currentPlayer.pieces.Contains(piece);
+        return piece != null && GetPieceColor(piece) == CurrentTurnColor;
     }
 
     public GameObject PieceAtGrid(Vector2Int gridPoint)
@@ -204,34 +231,15 @@ public class GameManager : MonoBehaviour
 
     public Vector2Int GridForPiece(GameObject piece)
     {
-        for (int i = 0; i < 8; i++) 
-        {
-            for (int j = 0; j < 8; j++)
-            {
-                if (pieces[i, j] == piece)
-                {
-                    return new Vector2Int(i, j);
-                }
-            }
-        }
-
-        return new Vector2Int(-1, -1);
+        return piece != null && piecePositions.TryGetValue(piece, out Vector2Int gridPoint)
+            ? gridPoint
+            : new Vector2Int(-1, -1);
     }
 
     public bool FriendlyPieceAt(Vector2Int gridPoint)
     {
         GameObject piece = PieceAtGrid(gridPoint);
-
-        if (piece == null) {
-            return false;
-        }
-
-        if (otherPlayer.pieces.Contains(piece))
-        {
-            return false;
-        }
-
-        return true;
+        return piece != null && GetPieceColor(piece) == CurrentTurnColor;
     }
 
     public void NextPlayer()
@@ -239,5 +247,31 @@ public class GameManager : MonoBehaviour
         Player tempPlayer = currentPlayer;
         currentPlayer = otherPlayer;
         otherPlayer = tempPlayer;
+    }
+
+    public PieceType GetPieceType(GameObject piece)
+    {
+        return GetPieceComponent(piece).type;
+    }
+
+    public PieceColor GetPieceColor(GameObject piece)
+    {
+        return pieceColors[piece];
+    }
+
+    public bool TouchMoveEnabled()
+    {
+        return touchMoveEnabled;
+    }
+
+    private Piece GetPieceComponent(GameObject piece)
+    {
+        if (!pieceComponentCache.TryGetValue(piece, out Piece component) || component == null)
+        {
+            component = piece.GetComponent<Piece>();
+            pieceComponentCache[piece] = component;
+        }
+
+        return component;
     }
 }

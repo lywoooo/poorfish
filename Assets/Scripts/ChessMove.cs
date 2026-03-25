@@ -1,11 +1,9 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class ChessMove
+public readonly struct ChessMove
 {
-    public Vector2Int from;
-    public Vector2Int to;
+    public readonly Vector2Int from;
+    public readonly Vector2Int to;
 
     public ChessMove(Vector2Int from, Vector2Int to) {
         this.from = from;

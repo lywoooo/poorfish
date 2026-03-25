@@ -28,12 +28,15 @@
  * THE SOFTWARE.
  */
 
+using System.Collections.Generic;
 using UnityEngine;
 
 public class Board : MonoBehaviour
 {
     public Material defaultMaterial;
     public Material selectedMaterial;
+
+    private readonly Dictionary<GameObject, MeshRenderer> rendererCache = new Dictionary<GameObject, MeshRenderer>(32);
 
     public GameObject AddPiece(GameObject piece, int col, int row)
     {
@@ -54,13 +57,22 @@ public class Board : MonoBehaviour
 
     public void SelectPiece(GameObject piece)
     {
-        MeshRenderer renderers = piece.GetComponentInChildren<MeshRenderer>();
-        renderers.material = selectedMaterial;
+        GetRenderer(piece).material = selectedMaterial;
     }
 
     public void DeselectPiece(GameObject piece)
     {
-        MeshRenderer renderers = piece.GetComponentInChildren<MeshRenderer>();
-        renderers.material = defaultMaterial;
+        GetRenderer(piece).material = defaultMaterial;
+    }
+
+    private MeshRenderer GetRenderer(GameObject piece)
+    {
+        if (!rendererCache.TryGetValue(piece, out MeshRenderer renderer) || renderer == null)
+        {
+            renderer = piece.GetComponentInChildren<MeshRenderer>();
+            rendererCache[piece] = renderer;
+        }
+
+        return renderer;
     }
 }
