@@ -57,3 +57,5 @@
 
 docs/Build/** linguist-generated
 poorfishdebebobment/Build/** linguist-generated
+docs/**/*.html linguist-generated
+docs/**/*.css linguist-generated
