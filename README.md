@@ -2,48 +2,39 @@
 
 A Unity chess project with a real rules layer, a search-based AI opponent, and a playable 3D board.
 
-This is still an in-progress project, but it already shows some thoughtful engineering under the surface.
+Still in progress, but there's some thoughtful engineering under the surface.
 
-## Highlights
+## What it is
 
-- Playable 3D chess board built in Unity, with piece selection, move highlighting, captures, and turn handling.
-- Legal move generation checks whether a move would leave your king in check, so the game does more than basic piece movement.
-- The AI searches ahead using minimax with alpha-beta pruning instead of choosing moves randomly.
-- Search is bounded by a time limit and uses a transposition table, which helps it stay practical while still looking ahead.
-- Position evaluation uses both material values and piece-square tables, giving the AI a more sensible idea of strong and weak positions.
-- The project already includes a WebGL build, which makes it easier to share in the browser.
+'poorfish' is more than a chess game. It has a proper board-state layer, legal move generation, check detection, end-of-game handling, and a computer opponent that actually evaluates positions before moving. 
 
-## Overview
+## What's working
 
-`poorfish` is not just a visual chess prototype. The project has a separate board-state layer, move generation, check detection, end-of-game handling, and a computer player that evaluates positions before moving.
+The current build covers the full main loop of a chess game: board setup, piece selection, move highlighting, captures, checkmate and stalemate detection, and a playable computer opponent.
 
-That separation matters because it makes the project easier to grow. The logic for rules, state snapshots, and AI search is already organized into dedicated scripts, which gives the project a solid base for future polish and feature work.
+Highlights:
 
-## What is working now
+- **Legal move filtering** checks whether a move would leave your king in check, so it's doing more than basic piece movement.
+- **Minimax with alpha-beta pruning**, no random moves. Search is bounded by a time limit and backed by a transposition table to keep things practical.
+- **Evaluation beyond material counts** — piece-square tables give the AI a more sensible sense of which positions are actually strong.
+- **A WebGL build**, so it's easy to share and play in the browser.
 
-The current build already supports the main loop of a chess game:
+## Running it
 
-- Board setup and piece placement
-- Piece selection and move highlighting
-- Legal move filtering
-- Captures
-- Checkmate and stalemate detection
-- A computer-controlled opponent
+1. Open the project in Unity `2022.3.62f1`.
+2. Open `Assets/Scenes/Main.unity`.
+3. Press Play.
 
-Built with Unity `2022.3.62f3`.
+### OR 
 
-## Running the project
-
-1. Open the project in Unity `2022.3.62f3`.
-2. Open [Assets/Scenes/Main.unity](/Users/leox/Personal/Unity/poorfish/Assets/Scenes/Main.unity).
-3. Press Play in the Unity editor.
+- Use the link: [poorfish](https://sgtryan10.github.io/poorfish/)
 
 ## Project structure
 
-- [Assets/Scripts](/Users/leox/Personal/Unity/poorfish/Assets/Scripts) contains the gameplay code, including board state, move generation, evaluation, and AI search.
-- [Assets/Scenes/Main.unity](/Users/leox/Personal/Unity/poorfish/Assets/Scenes/Main.unity) is the main playable scene.
-- [docs](/Users/leox/Personal/Unity/poorfish/docs) contains a WebGL build for browser hosting.
+- `Assets/Scripts` — gameplay code: board state, move generation, evaluation, and AI search.
+- `Assets/Scenes/Main.unity` — the main playable scene.
+- `docs` — WebGL build for browser hosting.
 
-## Development status
+## Status
 
-This project is still being developed. The core ideas are already in place and some parts are genuinely impressive, especially the rule handling and AI structure, but it should still be viewed as a strong work in progress rather than a finished chess game.
+The core ideas are in place and some parts are genuinely impressive, especially the rule handling and AI structure. Still, this should be viewed as a strong work in progress.
