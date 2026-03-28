@@ -1,40 +1,49 @@
 # poorfish
 
-`poorfish` is a Unity chess project that already does more than just render a board and move pieces around. It has a playable 3D presentation, legal move checking, check and checkmate detection, and a computer opponent that searches ahead instead of picking moves at random.
+A Unity chess project with a real rules layer, a search-based AI opponent, and a playable 3D board.
 
-The project is still actively being developed, so this is best read as a strong in-progress build rather than a finished game.
+This is still an in-progress project, but it already shows some thoughtful engineering under the surface.
 
-## What stands out
+## Highlights
 
-- It separates the visual board from the game-state logic, which makes the chess rules and AI easier to reason about.
-- The move system filters out illegal moves, so pieces cannot make moves that leave their own king in check.
-- The AI uses minimax with alpha-beta pruning, iterative deepening, a transposition table, and a think-time limit. In plain terms: it looks ahead efficiently and makes decisions under a real time budget.
-- The evaluation system combines material values with piece-square tables, which gives the AI a more believable sense of position than a basic capture-only approach.
-- The project handles game-ending states like checkmate and stalemate instead of stopping at simple piece movement.
-- There is already a WebGL build in the repo, which makes the project easier to share and test in a browser.
+- Playable 3D chess board built in Unity, with piece selection, move highlighting, captures, and turn handling.
+- Legal move generation checks whether a move would leave your king in check, so the game does more than basic piece movement.
+- The AI searches ahead using minimax with alpha-beta pruning instead of choosing moves randomly.
+- Search is bounded by a time limit and uses a transposition table, which helps it stay practical while still looking ahead.
+- Position evaluation uses both material values and piece-square tables, giving the AI a more sensible idea of strong and weak positions.
+- The project already includes a WebGL build, which makes it easier to share in the browser.
 
-## Why it feels promising
+## Overview
 
-This project has the kind of structure that makes future improvements realistic. The rules engine, board snapshot system, and AI search are already separated into their own scripts, so there is a clear path for improving difficulty, polishing the UI, adding missing chess rules, and tightening up the overall game feel without having to rebuild everything from scratch.
+`poorfish` is not just a visual chess prototype. The project has a separate board-state layer, move generation, check detection, end-of-game handling, and a computer player that evaluates positions before moving.
 
-## Current state
+That separation matters because it makes the project easier to grow. The logic for rules, state snapshots, and AI search is already organized into dedicated scripts, which gives the project a solid base for future polish and feature work.
+
+## What is working now
+
+The current build already supports the main loop of a chess game:
+
+- Board setup and piece placement
+- Piece selection and move highlighting
+- Legal move filtering
+- Captures
+- Checkmate and stalemate detection
+- A computer-controlled opponent
 
 Built with Unity `2022.3.62f3`.
-
-The core experience is already there: a playable chess board, piece interaction, move highlighting, captures, and an AI opponent. At the same time, it is still under development, and there is room to keep improving polish, feature completeness, and overall presentation.
-
-## Project layout
-
-- `Assets/Scripts/` contains the gameplay code, including board state, move generation, evaluation, and AI search.
-- `Assets/Scenes/Main.unity` is the main scene for the game.
-- `docs/` contains a WebGL build suitable for browser hosting.
 
 ## Running the project
 
 1. Open the project in Unity `2022.3.62f3`.
-2. Load `Assets/Scenes/Main.unity`.
+2. Open [Assets/Scenes/Main.unity](/Users/leox/Personal/Unity/poorfish/Assets/Scenes/Main.unity).
 3. Press Play in the Unity editor.
 
-## In development
+## Project structure
 
-This project is still being developed. Some parts already show strong technical thinking, especially around chess logic and AI, while other parts are still on the way from solid prototype to fully polished game.
+- [Assets/Scripts](/Users/leox/Personal/Unity/poorfish/Assets/Scripts) contains the gameplay code, including board state, move generation, evaluation, and AI search.
+- [Assets/Scenes/Main.unity](/Users/leox/Personal/Unity/poorfish/Assets/Scenes/Main.unity) is the main playable scene.
+- [docs](/Users/leox/Personal/Unity/poorfish/docs) contains a WebGL build for browser hosting.
+
+## Development status
+
+This project is still being developed. The core ideas are already in place and some parts are genuinely impressive, especially the rule handling and AI structure, but it should still be viewed as a strong work in progress rather than a finished chess game.
