@@ -97,3 +97,22 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# =========================
+# FIX: WebGL / JS-heavy builds
+# =========================
+/WebGL/
+/[Bb]uilds/WebGL/
+/[Bb]uild/WebGL/
+
+# =========================
+# FIX: Node / JS dependencies (sometimes pulled in)
+# =========================
+node_modules/
+*.js.map
+
+# =========================
+# FIX: Ignore large generated JS build artifacts
+# =========================
+/[Bb]uilds/**/*.js
+/[Bb]uild/**/*.js
