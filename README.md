@@ -6,7 +6,7 @@ Still in progress, but there's some thoughtful engineering under the surface.
 
 ## What it is
 
-'poorfish' is more than a chess game. It has a proper board-state layer, legal move generation, check detection, end-of-game handling, and a computer opponent that actually evaluates positions before moving. 
+`poorfish` is more than a chess game. It has a proper board-state layer, legal move generation, check detection, end-of-game handling, and a computer opponent that actually evaluates positions before moving. 
 
 ## What's working
 
