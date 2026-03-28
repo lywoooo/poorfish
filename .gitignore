@@ -116,3 +116,7 @@ node_modules/
 # =========================
 /[Bb]uilds/**/*.js
 /[Bb]uild/**/*.js
+
+docs/Build/
+poorfishdebebobment/Build/
+**/Build/
