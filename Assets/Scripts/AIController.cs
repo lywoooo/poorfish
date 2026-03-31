@@ -8,11 +8,11 @@ public class AIController : MonoBehaviour
     public bool aiStartColorBlack = true;
 
     // 4 ply search depth
-    public int searchDepth = 4;
+    public int searchDepth = 6;
     public float maxThinkTimeSeconds = 1.5f;
 
     // Move delay for cool factor
-    public float moveDelay = 0.5f;
+    public float moveDelay = 0.5f; 
     private bool calculatingMove = false;
 
     void Update()
