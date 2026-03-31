@@ -25,4 +25,4 @@ Highlights:
 
 ## Status
 
-This project 
+This project is still a work in progress! More updates coming soon. 
