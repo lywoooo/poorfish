@@ -21,20 +21,8 @@ Highlights:
 
 ## Running it
 
-1. Open the project in Unity `2022.3.62f1`.
-2. Open `Assets/Scenes/Main.unity`.
-3. Press Play.
-
-### OR 
-
-- Use the link: [poorfish](https://sgtryan10.github.io/poorfish/)
-
-## Project structure
-
-- `Assets/Scripts` — gameplay code: board state, move generation, evaluation, and AI search.
-- `Assets/Scenes/Main.unity` — the main playable scene.
-- `docs` — WebGL build for browser hosting.
+- Use the link: [poorfish](https://sgtryan10.github.io/poorfish/) (Will convert to itch.io later)
 
 ## Status
 
-The core ideas are in place and some parts are genuinely impressive, especially the rule handling and AI structure. Still, this should be viewed as a strong work in progress.
+This project 
