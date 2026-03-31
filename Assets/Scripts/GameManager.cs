@@ -62,6 +62,7 @@ public class GameManager : MonoBehaviour
     private Player black;
     public Player currentPlayer;
     public Player otherPlayer;
+    public bool IsGameOver { get; private set; }
     public PieceColor CurrentTurnColor => currentPlayer == white ? PieceColor.White : PieceColor.Black;
 
     void Awake()
@@ -191,9 +192,7 @@ public class GameManager : MonoBehaviour
 
         if (GetPieceComponent(pieceToCapture).type == PieceType.King)
         {
-            Debug.Log(currentPlayer.name + " wins!");
-            Destroy(board.GetComponent<TileSelector>());
-            Destroy(board.GetComponent<MoveSelector>());
+            EndGame(currentPlayer.name + " wins!");
         }
         currentPlayer.capturedPieces.Add(pieceToCapture);
         otherPlayer.pieces.Remove(pieceToCapture);
@@ -262,6 +261,35 @@ public class GameManager : MonoBehaviour
     public bool TouchMoveEnabled()
     {
         return touchMoveEnabled;
+    }
+
+    public void EndGame(string message)
+    {
+        if (IsGameOver)
+        {
+            return;
+        }
+
+        IsGameOver = true;
+        Debug.Log(message);
+
+        var tileSelector = board.GetComponent<TileSelector>();
+        if (tileSelector != null)
+        {
+            tileSelector.enabled = false;
+        }
+
+        var moveSelector = board.GetComponent<MoveSelector>();
+        if (moveSelector != null)
+        {
+            moveSelector.enabled = false;
+        }
+
+        var aiController = board.GetComponent<AIController>();
+        if (aiController != null)
+        {
+            aiController.enabled = false;
+        }
     }
 
     private Piece GetPieceComponent(GameObject piece)

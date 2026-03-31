@@ -60,6 +60,11 @@ public class MoveSelector : MonoBehaviour
 
     void Update ()
     {
+        if (cachedGameManager.IsGameOver)
+        {
+            return;
+        }
+
         if (cachedCamera == null)
         {
             cachedCamera = Camera.main;
@@ -188,8 +193,11 @@ public class MoveSelector : MonoBehaviour
         tileHighlight.SetActive(false);
         cachedGameManager.DeselectPiece(movingPiece);
         movingPiece = null;
-        cachedGameManager.NextPlayer();
-        cachedTileSelector.EnterState();
+        if (!cachedGameManager.IsGameOver)
+        {
+            cachedGameManager.NextPlayer();
+            cachedTileSelector.EnterState();
+        }
         foreach (GameObject highlight in locationHighlights)
         {
             Destroy(highlight);

@@ -17,7 +17,7 @@ public class AIController : MonoBehaviour
 
     void Update()
     {
-        if(calculatingMove) return;
+        if(calculatingMove || GameManager.instance.IsGameOver) return;
 
         string aiColor = aiStartColorBlack ? "black" : "white";
 
@@ -116,8 +116,11 @@ public class AIController : MonoBehaviour
             Debug.Log(gm.currentPlayer.name + " (AI) played " + fromPos + " to " + bestMove.to + " with evaluated score of " + bestScore + " at depth " + completedDepth);
         }
 
-        gm.NextPlayer();
-        GetComponent<TileSelector>().EnterState();
+        if (!gm.IsGameOver)
+        {
+            gm.NextPlayer();
+            GetComponent<TileSelector>().EnterState();
+        }
         calculatingMove = false;
     }
 }

@@ -52,6 +52,11 @@ public class TileSelector : MonoBehaviour
 
     void Update ()
     {
+        if (cachedGameManager.IsGameOver)
+        {
+            return;
+        }
+
         if (cachedCamera == null)
         {
             cachedCamera = Camera.main;
