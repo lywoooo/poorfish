@@ -2,7 +2,7 @@
 
 A Unity chess project with a real rules layer, a search-based AI opponent, and a playable 3D board.
 
-Still in progress, but there's some thoughtful engineering under the surface.
+Still in progress. Detached from original [poorfish repo](https://github.com/Sgtryan10/poorfish.git).
 
 ## What it is
 
