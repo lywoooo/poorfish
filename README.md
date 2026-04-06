@@ -4,6 +4,8 @@ A Unity chess project with a real rules layer, a search-based AI opponent, and a
 
 Still in progress. Detached from original [poorfish repo](https://github.com/Sgtryan10/poorfish.git).
 
+![Chess Board][<img width="1928" height="1292" alt="Chess_Screenshot" src="https://github.com/user-attachments/assets/59b7f82e-e906-4b8c-9ca0-fdbec62a9e7d" />]
+
 ## What it is
 
 `poorfish` is more than a chess game. It has a proper board-state layer, legal move generation, check detection, end-of-game handling, and a computer opponent that actually evaluates positions before moving. 
