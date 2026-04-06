@@ -48,7 +48,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 640
+  spritePixelsToUnits: 200
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -69,7 +69,7 @@ TextureImporter:
   platformSettings:
   - serializedVersion: 3
     buildTarget: DefaultTexturePlatform
-    maxTextureSize: 2048
+    maxTextureSize: 4096
     resizeAlgorithm: 0
     textureFormat: -1
     textureCompression: 0
@@ -95,14 +95,14 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   - serializedVersion: 3
     buildTarget: WebGL
-    maxTextureSize: 2048
+    maxTextureSize: 4096
     resizeAlgorithm: 0
-    textureFormat: -1
+    textureFormat: 12
     textureCompression: 1
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
-    overridden: 0
+    overridden: 1
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
@@ -134,8 +134,8 @@ TextureImporter:
       name: white_queen
       rect:
         serializedVersion: 2
-        x: 638
-        y: 638
+        x: 640
+        y: 640
         width: 640
         height: 640
       alignment: 0
@@ -155,7 +155,7 @@ TextureImporter:
       name: white_bishop
       rect:
         serializedVersion: 2
-        x: 1282
+        x: 1280
         y: 640
         width: 640
         height: 640
@@ -260,7 +260,7 @@ TextureImporter:
       name: black_queen
       rect:
         serializedVersion: 2
-        x: 636
+        x: 640
         y: 0
         width: 640
         height: 640
@@ -281,7 +281,7 @@ TextureImporter:
       name: black_bishop
       rect:
         serializedVersion: 2
-        x: 1278
+        x: 1280
         y: 0
         width: 640
         height: 640
@@ -302,8 +302,8 @@ TextureImporter:
       name: black_knight
       rect:
         serializedVersion: 2
-        x: 1918
-        y: 2
+        x: 1920
+        y: 0
         width: 640
         height: 640
       alignment: 0

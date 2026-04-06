@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class BoardUI : MonoBehaviour
@@ -17,21 +15,39 @@ public class BoardUI : MonoBehaviour
 
     public void BuildVisualBoard()
     {
+        ClearVisualBoard();
+
         for (int file = 0; file < 8; file++)
         {
             for (int rank = 0; rank < 8; rank++)
             {
                 bool isLight = (file + rank) % 2 != 0;
                 Color squareColor = isLight ? lightColor : darkColor;
-
-                Vector2 position = new Vector2(-1f + file, -1f + rank);
-
+                Vector3 position = Geometry.PointFromGrid(new Vector2Int(file, rank));
                 GameObject square = Instantiate(SquarePrefab, position, Quaternion.identity, transform);
                 SpriteRenderer sr = square.GetComponent<SpriteRenderer>();
-                sr.color = squareColor;
+                if (sr != null)
+                {
+                    sr.color = squareColor;
+                }
 
                 square.name = $"Square_{file}_{rank}";
-                Board[file, rank] = square; 
+                Board[file, rank] = square;
+            }
+        }
+    }
+
+    private void ClearVisualBoard()
+    {
+        for (int file = 0; file < 8; file++)
+        {
+            for (int rank = 0; rank < 8; rank++)
+            {
+                if (Board[file, rank] != null)
+                {
+                    Destroy(Board[file, rank]);
+                    Board[file, rank] = null;
+                }
             }
         }
     }

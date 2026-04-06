@@ -38,19 +38,24 @@ public class GameManager : MonoBehaviour
     public Board board;
     public bool touchMoveEnabled = true;
 
-    public GameObject whiteKing;
-    public GameObject whiteQueen;
-    public GameObject whiteBishop;
-    public GameObject whiteKnight;
-    public GameObject whiteRook;
-    public GameObject whitePawn;
+    // piece game object
+    public GameObject piecePrefab;
 
-    public GameObject blackKing;
-    public GameObject blackQueen;
-    public GameObject blackBishop;
-    public GameObject blackKnight;
-    public GameObject blackRook;
-    public GameObject blackPawn;
+    // white piece sprites
+    public Sprite whiteKingSprite;
+    public Sprite whiteQueenSprite;
+    public Sprite whiteBishopSprite;
+    public Sprite whiteKnightSprite;
+    public Sprite whiteRookSprite;
+    public Sprite whitePawnSprite;
+
+    // black piece sprites
+    public Sprite blackKingSprite;
+    public Sprite blackQueenSprite;
+    public Sprite blackBishopSprite;
+    public Sprite blackKnightSprite;
+    public Sprite blackRookSprite;
+    public Sprite blackPawnSprite;
 
     private GameObject[,] pieces;
     private HashSet<GameObject> movedPawns;
@@ -86,39 +91,44 @@ public class GameManager : MonoBehaviour
 
     private void InitialSetup()
     {
-        AddPiece(whiteRook, white, 0, 0);
-        AddPiece(whiteKnight, white, 1, 0);
-        AddPiece(whiteBishop, white, 2, 0);
-        AddPiece(whiteQueen, white, 3, 0);
-        AddPiece(whiteKing, white, 4, 0);
-        AddPiece(whiteBishop, white, 5, 0);
-        AddPiece(whiteKnight, white, 6, 0);
-        AddPiece(whiteRook, white, 7, 0);
+        AddPiece(PieceType.Rook, white, 0, 0);
+        AddPiece(PieceType.Knight, white, 1, 0);
+        AddPiece(PieceType.Bishop, white, 2, 0);
+        AddPiece(PieceType.Queen, white, 3, 0);
+        AddPiece(PieceType.King, white, 4, 0);
+        AddPiece(PieceType.Bishop, white, 5, 0);
+        AddPiece(PieceType.Knight, white, 6, 0);
+        AddPiece(PieceType.Rook, white, 7, 0);
 
         for (int i = 0; i < 8; i++)
         {
-            AddPiece(whitePawn, white, i, 1);
+            AddPiece(PieceType.Pawn, white, i, 1);
         }
 
-        AddPiece(blackRook, black, 0, 7);
-        AddPiece(blackKnight, black, 1, 7);
-        AddPiece(blackBishop, black, 2, 7);
-        AddPiece(blackQueen, black, 3, 7);
-        AddPiece(blackKing, black, 4, 7);
-        AddPiece(blackBishop, black, 5, 7);
-        AddPiece(blackKnight, black, 6, 7);
-        AddPiece(blackRook, black, 7, 7);
+        AddPiece(PieceType.Rook, black, 0, 7);
+        AddPiece(PieceType.Knight, black, 1, 7);
+        AddPiece(PieceType.Bishop, black, 2, 7);
+        AddPiece(PieceType.Queen, black, 3, 7);
+        AddPiece(PieceType.King, black, 4, 7);
+        AddPiece(PieceType.Bishop, black, 5, 7);
+        AddPiece(PieceType.Knight, black, 6, 7);
+        AddPiece(PieceType.Rook, black, 7, 7);
 
         for (int i = 0; i < 8; i++)
         {
-            AddPiece(blackPawn, black, i, 6);
+            AddPiece(PieceType.Pawn, black, i, 6);
         }
     }
 
-    public void AddPiece(GameObject prefab, Player player, int col, int row)
+    public void AddPiece(PieceType type, Player player, int col, int row)
     {
-        GameObject pieceObject = board.AddPiece(prefab, col, row);
-        Piece pieceComponent = EnsurePieceComponent(pieceObject, prefab);
+        GameObject pieceObject = board.AddPiece(piecePrefab, col, row);
+        Piece pieceComponent = EnsurePieceComponent(pieceObject, type);
+        PieceColor color = player == white ? PieceColor.White : PieceColor.Black;
+
+        SpriteRenderer sr = pieceObject.GetComponent<SpriteRenderer>();
+        sr.sprite = GetSpriteForPiece(pieceComponent.Type, color);
+
         player.pieces.Add(pieceObject);
         pieces[col, row] = pieceObject;
         piecePositions[pieceObject] = new Vector2Int(col, row);
@@ -308,7 +318,7 @@ public class GameManager : MonoBehaviour
         return component;
     }
 
-    private Piece EnsurePieceComponent(GameObject pieceObject, GameObject prefab)
+    private Piece EnsurePieceComponent(GameObject pieceObject, PieceType type)
     {
         Piece component = pieceObject.GetComponent<Piece>();
         if (component == null)
@@ -316,18 +326,36 @@ public class GameManager : MonoBehaviour
             component = pieceObject.AddComponent<Piece>();
         }
 
-        component.Type = ResolvePieceType(prefab);
+        component.Type = type;
         return component;
     }
 
-    private PieceType ResolvePieceType(GameObject prefab)
+    private Sprite GetSpriteForPiece(PieceType type, PieceColor color)
     {
-        if (prefab == whiteKing || prefab == blackKing) return PieceType.King;
-        if (prefab == whiteQueen || prefab == blackQueen) return PieceType.Queen;
-        if (prefab == whiteBishop || prefab == blackBishop) return PieceType.Bishop;
-        if (prefab == whiteKnight || prefab == blackKnight) return PieceType.Knight;
-        if (prefab == whiteRook || prefab == blackRook) return PieceType.Rook;
-        if (prefab == whitePawn || prefab == blackPawn) return PieceType.Pawn;
-        return PieceType.None;
+        if (color == PieceColor.White)
+        {
+            switch(type)
+            {
+                case PieceType.King : return whiteKingSprite;
+                case PieceType.Queen : return whiteQueenSprite;
+                case PieceType.Knight : return whiteKnightSprite;
+                case PieceType.Bishop : return whiteBishopSprite;
+                case PieceType.Rook : return whiteRookSprite;
+                case PieceType.Pawn : return whitePawnSprite;
+            }
+        } 
+        else
+        {
+            switch (type)
+            {
+                case PieceType.King : return blackKingSprite;
+                case PieceType.Queen : return blackQueenSprite;
+                case PieceType.Knight : return blackKnightSprite;
+                case PieceType.Bishop : return blackBishopSprite;
+                case PieceType.Rook : return blackRookSprite;
+                case PieceType.Pawn : return blackPawnSprite;
+            }
+        }
+        return null;
     }
 }

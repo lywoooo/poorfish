@@ -37,6 +37,8 @@ public class Board : MonoBehaviour
     public Material selectedMaterial;
 
     private readonly Dictionary<GameObject, MeshRenderer> rendererCache = new Dictionary<GameObject, MeshRenderer>(32);
+    private readonly Dictionary<GameObject, SpriteRenderer> spriteRendererCache = new Dictionary<GameObject, SpriteRenderer>(32);
+    private readonly Dictionary<GameObject, Color> defaultSpriteColors = new Dictionary<GameObject, Color>(32);
 
     public GameObject AddPiece(GameObject piece, int col, int row)
     {
@@ -57,12 +59,52 @@ public class Board : MonoBehaviour
 
     public void SelectPiece(GameObject piece)
     {
-        GetRenderer(piece).material = selectedMaterial;
+        MeshRenderer meshRenderer = GetRenderer(piece);
+        if (meshRenderer != null)
+        {
+            if (selectedMaterial != null)
+            {
+                meshRenderer.material = selectedMaterial;
+            }
+            return;
+        }
+
+        SpriteRenderer spriteRenderer = GetSpriteRenderer(piece);
+        if (spriteRenderer != null)
+        {
+            if (!defaultSpriteColors.ContainsKey(piece))
+            {
+                defaultSpriteColors[piece] = spriteRenderer.color;
+            }
+
+            spriteRenderer.color = new Color(1f, 0.9f, 0.4f, 1f);
+        }
     }
 
     public void DeselectPiece(GameObject piece)
     {
-        GetRenderer(piece).material = defaultMaterial;
+        MeshRenderer meshRenderer = GetRenderer(piece);
+        if (meshRenderer != null)
+        {
+            if (defaultMaterial != null)
+            {
+                meshRenderer.material = defaultMaterial;
+            }
+            return;
+        }
+
+        SpriteRenderer spriteRenderer = GetSpriteRenderer(piece);
+        if (spriteRenderer != null)
+        {
+            if (defaultSpriteColors.TryGetValue(piece, out Color defaultColor))
+            {
+                spriteRenderer.color = defaultColor;
+            }
+            else
+            {
+                spriteRenderer.color = Color.white;
+            }
+        }
     }
 
     private MeshRenderer GetRenderer(GameObject piece)
@@ -71,6 +113,17 @@ public class Board : MonoBehaviour
         {
             renderer = piece.GetComponentInChildren<MeshRenderer>();
             rendererCache[piece] = renderer;
+        }
+
+        return renderer;
+    }
+
+    private SpriteRenderer GetSpriteRenderer(GameObject piece)
+    {
+        if (!spriteRendererCache.TryGetValue(piece, out SpriteRenderer renderer) || renderer == null)
+        {
+            renderer = piece.GetComponentInChildren<SpriteRenderer>();
+            spriteRendererCache[piece] = renderer;
         }
 
         return renderer;
