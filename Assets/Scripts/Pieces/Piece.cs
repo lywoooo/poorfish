@@ -28,19 +28,56 @@
  * THE SOFTWARE.
  */
 
-using System.Collections.Generic;
+
+
 using UnityEngine;
+using UnityEngine.UIElements;
 
-public enum PieceType {King, Queen, Bishop, Knight, Rook, Pawn};
-
-public abstract class Piece : MonoBehaviour
+public static class Piece
 {
-    public PieceType type;
+    // piece types
+    public const int None = 0; 
+    public const int King = 1;
+    public const int Pawn = 2;
+    public const int Knight = 3;
+    public const int Bishop = 4;
+    public const int Rook = 5;
+    public const int Queen = 6;
 
-    protected Vector2Int[] RookDirections = {new Vector2Int(0,1), new Vector2Int(1, 0),
-        new Vector2Int(0, -1), new Vector2Int(-1, 0)};
-    protected Vector2Int[] BishopDirections = {new Vector2Int(1,1), new Vector2Int(1, -1),
-        new Vector2Int(-1, -1), new Vector2Int(-1, 1)};
+    // piece color
+    public const int Black = 8;
 
-    public abstract List<Vector2Int> MoveLocations(Vector2Int gridPoint);
+    public static int CreatePiece(int piece, bool isBlack)
+    {
+        
+    }
+
+    public static int getType(int piece)
+    {
+        
+    }
+
+    public static bool isBlack(int piece)
+    {
+        
+    }
+
+    public static bool isEmpty(int piece)
+    {
+        
+    }
+
+    public static int getValue(int piece)
+    {
+        switch(getType(piece))
+        {
+            case Pawn : return 100;
+            case Knight : return 250;
+            case Bishop : return 300;
+            case Rook : return 500;
+            case Queen : return 900;
+            case King : return 20000;
+            default : return 0;
+        }
+    }
 }
