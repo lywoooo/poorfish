@@ -118,10 +118,11 @@ public class GameManager : MonoBehaviour
     public void AddPiece(GameObject prefab, Player player, int col, int row)
     {
         GameObject pieceObject = board.AddPiece(prefab, col, row);
+        Piece pieceComponent = EnsurePieceComponent(pieceObject, prefab);
         player.pieces.Add(pieceObject);
         pieces[col, row] = pieceObject;
         piecePositions[pieceObject] = new Vector2Int(col, row);
-        pieceComponentCache[pieceObject] = pieceObject.GetComponent<Piece>();
+        pieceComponentCache[pieceObject] = pieceComponent;
         pieceColors[pieceObject] = player == white ? PieceColor.White : PieceColor.Black;
     }
 
@@ -160,7 +161,7 @@ public class GameManager : MonoBehaviour
     public void Move(GameObject piece, Vector2Int gridPoint)
     {
         Piece pieceComponent = GetPieceComponent(piece);
-        if (pieceComponent.type == PieceType.Pawn && !HasPawnMoved(piece))
+        if (pieceComponent.Type == PieceType.Pawn && !HasPawnMoved(piece))
         {
             movedPawns.Add(piece);
         }
@@ -190,7 +191,7 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        if (GetPieceComponent(pieceToCapture).type == PieceType.King)
+        if (GetPieceComponent(pieceToCapture).Type == PieceType.King)
         {
             EndGame(currentPlayer.name + " wins!");
         }
@@ -250,7 +251,7 @@ public class GameManager : MonoBehaviour
 
     public PieceType GetPieceType(GameObject piece)
     {
-        return GetPieceComponent(piece).type;
+        return GetPieceComponent(piece).Type;
     }
 
     public PieceColor GetPieceColor(GameObject piece)
@@ -297,9 +298,36 @@ public class GameManager : MonoBehaviour
         if (!pieceComponentCache.TryGetValue(piece, out Piece component) || component == null)
         {
             component = piece.GetComponent<Piece>();
+            if (component == null)
+            {
+                component = piece.AddComponent<Piece>();
+            }
             pieceComponentCache[piece] = component;
         }
 
         return component;
+    }
+
+    private Piece EnsurePieceComponent(GameObject pieceObject, GameObject prefab)
+    {
+        Piece component = pieceObject.GetComponent<Piece>();
+        if (component == null)
+        {
+            component = pieceObject.AddComponent<Piece>();
+        }
+
+        component.Type = ResolvePieceType(prefab);
+        return component;
+    }
+
+    private PieceType ResolvePieceType(GameObject prefab)
+    {
+        if (prefab == whiteKing || prefab == blackKing) return PieceType.King;
+        if (prefab == whiteQueen || prefab == blackQueen) return PieceType.Queen;
+        if (prefab == whiteBishop || prefab == blackBishop) return PieceType.Bishop;
+        if (prefab == whiteKnight || prefab == blackKnight) return PieceType.Knight;
+        if (prefab == whiteRook || prefab == blackRook) return PieceType.Rook;
+        if (prefab == whitePawn || prefab == blackPawn) return PieceType.Pawn;
+        return PieceType.None;
     }
 }
