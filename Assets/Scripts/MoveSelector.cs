@@ -28,7 +28,6 @@
  * THE SOFTWARE.
  */
 
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -45,14 +44,11 @@ public class MoveSelector : MonoBehaviour
     private List<GameObject> locationHighlights;
     private Camera cachedCamera;
     private GameManager cachedGameManager;
-    private TileSelector cachedTileSelector;
 
     void Start ()
     {
-        this.enabled = false;
         cachedCamera = Camera.main;
         cachedGameManager = GameManager.instance;
-        cachedTileSelector = GetComponent<TileSelector>();
         tileHighlight = Instantiate(tileHighlightPrefab, Geometry.PointFromGrid(new Vector2Int(0, 0)),
             Quaternion.identity, gameObject.transform);
         tileHighlight.SetActive(false);
@@ -74,54 +70,20 @@ public class MoveSelector : MonoBehaviour
             }
         }
 
-        Ray ray = cachedCamera.ScreenPointToRay(Input.mousePosition);
-
-        RaycastHit hit;
-        if (Physics.Raycast(ray, out hit))
+        if (TryGetGridPointUnderCursor(out Vector2Int gridPoint))
         {
-            Vector3 point = hit.point;
-            Vector2Int gridPoint = Geometry.GridFromPoint(point);
-
             tileHighlight.SetActive(true);
             tileHighlight.transform.position = Geometry.PointFromGrid(gridPoint);
             if (Input.GetMouseButtonDown(0))
             {
-                GameObject clickedPiece = cachedGameManager.PieceAtGrid(gridPoint);
-
-                if (!cachedGameManager.TouchMoveEnabled() && cachedGameManager.DoesPieceBelongToCurrentPlayer(clickedPiece))
+                if (movingPiece == null)
                 {
-                    if (clickedPiece == movingPiece)
-                    {
-                        CancelMove();
-                    }
-                    else
-                    {
-                        ReselectPiece(clickedPiece);
-                    }
-                    return;
-                }
-
-                // Reference Point 2: check for valid move location
-                if (!moveLocationLookup.Contains(gridPoint))
-                {
-                    if (!cachedGameManager.TouchMoveEnabled())
-                    {
-                        CancelMove();
-                    }
-                    return;
-                }
-
-                if (cachedGameManager.PieceAtGrid(gridPoint) == null)
-                {
-                    cachedGameManager.Move(movingPiece, gridPoint);
+                    TrySelectPiece(gridPoint);
                 }
                 else
                 {
-                    cachedGameManager.CapturePieceAt(gridPoint);
-                    cachedGameManager.Move(movingPiece, gridPoint);
+                    TryMoveSelectedPiece(gridPoint);
                 }
-                // Reference Point 3: capture enemy piece here later
-                ExitState();
             }
         }
         else
@@ -130,24 +92,80 @@ public class MoveSelector : MonoBehaviour
         }
     }
 
-    private void CancelMove()
+    public void EnterState()
     {
-        this.enabled = false;
-        ClearHighlights();
-        cachedGameManager.DeselectPiece(movingPiece);
-        movingPiece = null;
-        cachedTileSelector.EnterState();
+        enabled = true;
     }
 
-    private void ReselectPiece(GameObject piece)
+    private void TrySelectPiece(Vector2Int gridPoint)
+    {
+        GameObject selectedPiece = cachedGameManager.PieceAtGrid(gridPoint);
+        if (!cachedGameManager.DoesPieceBelongToCurrentPlayer(selectedPiece))
+        {
+            return;
+        }
+
+        SelectPiece(selectedPiece);
+    }
+
+    private void TryMoveSelectedPiece(Vector2Int gridPoint)
+    {
+        GameObject clickedPiece = cachedGameManager.PieceAtGrid(gridPoint);
+        if (!cachedGameManager.TouchMoveEnabled() && cachedGameManager.DoesPieceBelongToCurrentPlayer(clickedPiece))
+        {
+            if (clickedPiece == movingPiece)
+            {
+                ClearSelection();
+            }
+            else
+            {
+                SelectPiece(clickedPiece);
+            }
+            return;
+        }
+
+        if (moveLocationLookup == null || !moveLocationLookup.Contains(gridPoint))
+        {
+            if (!cachedGameManager.TouchMoveEnabled())
+            {
+                ClearSelection();
+            }
+            return;
+        }
+
+        if (clickedPiece == null)
+        {
+            cachedGameManager.Move(movingPiece, gridPoint);
+        }
+        else
+        {
+            cachedGameManager.CapturePieceAt(gridPoint);
+            cachedGameManager.Move(movingPiece, gridPoint);
+        }
+
+        FinishMove();
+    }
+
+    private void SelectPiece(GameObject piece)
     {
         ClearHighlights();
-        cachedGameManager.DeselectPiece(movingPiece);
+
+        if (movingPiece != null)
+        {
+            cachedGameManager.DeselectPiece(movingPiece);
+        }
+
         movingPiece = piece;
         cachedGameManager.SelectPiece(movingPiece);
         moveLocations = cachedGameManager.MovesForPiece(movingPiece);
         moveLocationLookup = new HashSet<Vector2Int>(moveLocations);
         locationHighlights = new List<GameObject>(moveLocations.Count);
+
+        if (moveLocations.Count == 0)
+        {
+            ClearSelection();
+            return;
+        }
 
         foreach (Vector2Int loc in moveLocations)
         {
@@ -158,52 +176,26 @@ public class MoveSelector : MonoBehaviour
         }
     }
 
-    public void EnterState(GameObject piece)
+    private void FinishMove()
     {
-        movingPiece = piece;
-        this.enabled = true;
-
-        moveLocations = cachedGameManager.MovesForPiece(movingPiece);
-        moveLocationLookup = new HashSet<Vector2Int>(moveLocations);
-        locationHighlights = new List<GameObject>(moveLocations.Count);
-
-        if (moveLocations.Count == 0)
-        {
-            CancelMove();
-        }
-
-        foreach (Vector2Int loc in moveLocations)
-        {
-            GameObject highlight;
-            if (cachedGameManager.PieceAtGrid(loc))
-            {
-                highlight = Instantiate(attackLocationPrefab, Geometry.PointFromGrid(loc), Quaternion.identity, gameObject.transform);
-            }
-            else
-            {
-                highlight = Instantiate(moveLocationPrefab, Geometry.PointFromGrid(loc), Quaternion.identity, gameObject.transform);
-            }
-            locationHighlights.Add(highlight);
-        }
-    }
-
-    private void ExitState()
-    {
-        this.enabled = false;
+        ClearSelection();
         tileHighlight.SetActive(false);
-        cachedGameManager.DeselectPiece(movingPiece);
-        movingPiece = null;
+
         if (!cachedGameManager.IsGameOver)
         {
             cachedGameManager.NextPlayer();
-            cachedTileSelector.EnterState();
         }
-        foreach (GameObject highlight in locationHighlights)
-        {
-            Destroy(highlight);
-        }
+    }
 
-        moveLocationLookup?.Clear();
+    private void ClearSelection()
+    {
+        ClearHighlights();
+
+        if (movingPiece != null)
+        {
+            cachedGameManager.DeselectPiece(movingPiece);
+            movingPiece = null;
+        }
     }
 
     private void ClearHighlights()
@@ -218,6 +210,29 @@ public class MoveSelector : MonoBehaviour
             locationHighlights.Clear();
         }
 
+        moveLocations?.Clear();
         moveLocationLookup?.Clear();
+        moveLocationLookup = null;
+    }
+
+    private bool TryGetGridPointUnderCursor(out Vector2Int gridPoint)
+    {
+        Ray ray = cachedCamera.ScreenPointToRay(Input.mousePosition);
+
+        RaycastHit2D hit2D = Physics2D.GetRayIntersection(ray);
+        if (hit2D.collider != null)
+        {
+            gridPoint = Geometry.GridFromPoint(hit2D.point);
+            return true;
+        }
+
+        if (Physics.Raycast(ray, out RaycastHit hit3D))
+        {
+            gridPoint = Geometry.GridFromPoint(hit3D.point);
+            return true;
+        }
+
+        gridPoint = default;
+        return false;
     }
 }

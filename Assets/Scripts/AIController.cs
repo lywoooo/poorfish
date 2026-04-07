@@ -52,9 +52,7 @@ public class AIController : MonoBehaviour
                 Debug.Log("stalemate");
             }
 
-            var tileSelector = GetComponent<TileSelector>();
             var moveSelector = GetComponent<MoveSelector>();
-            if (tileSelector != null) tileSelector.enabled = false;
             if (moveSelector != null) moveSelector.enabled = false;
             enabled = false;
             calculatingMove = false;
@@ -119,7 +117,11 @@ public class AIController : MonoBehaviour
         if (!gm.IsGameOver)
         {
             gm.NextPlayer();
-            GetComponent<TileSelector>().EnterState();
+            var moveSelector = GetComponent<MoveSelector>();
+            if (moveSelector != null)
+            {
+                moveSelector.EnterState();
+            }
         }
         calculatingMove = false;
     }

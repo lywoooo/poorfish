@@ -193,7 +193,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 13
+  orthographic size: 14.5
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -236,7 +236,6 @@ GameObject:
   - component: {fileID: 516697440}
   - component: {fileID: 516697441}
   - component: {fileID: 516697442}
-  - component: {fileID: 516697443}
   - component: {fileID: 516697444}
   m_Layer: 0
   m_Name: GameManager
@@ -272,7 +271,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 51b02f7ab4d0c4e98996589a5422e219, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SquarePrefab: {fileID: 7087095542013051277, guid: 8d0f92fcbca2744ecb1f093b79103761,
+  SquarePrefab: {fileID: 6401480598873813483, guid: 8d0f92fcbca2744ecb1f093b79103761,
     type: 3}
   darkColor: {r: 0.70980394, g: 0.53333336, b: 0.3882353, a: 1}
   lightColor: {r: 0.9411765, g: 0.8509804, b: 0.70980394, a: 1}
@@ -323,20 +322,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   defaultMaterial: {fileID: 0}
   selectedMaterial: {fileID: 0}
---- !u!114 &516697443
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 516697437}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: be0b3ae2be1ec485e92156d9782b6385, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  tileHighlightPrefab: {fileID: 1333511979136996, guid: e860aff6f484c47d7b713cbebd3ee5d3,
-    type: 3}
 --- !u!114 &516697444
 MonoBehaviour:
   m_ObjectHideFlags: 0

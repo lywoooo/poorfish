@@ -8,6 +8,11 @@ public class BoardUI : MonoBehaviour
 
     private GameObject[,] Board = new GameObject[8, 8];
 
+    void Awake()
+    {
+        Geometry.SetCellSize(GetSquareSize());
+    }
+
     void Start()
     {
         BuildVisualBoard();
@@ -50,5 +55,27 @@ public class BoardUI : MonoBehaviour
                 }
             }
         }
+    }
+
+    private float GetSquareSize()
+    {
+        if (SquarePrefab == null)
+        {
+            return Geometry.CellSize;
+        }
+
+        BoxCollider collider = SquarePrefab.GetComponent<BoxCollider>();
+        if (collider != null)
+        {
+            return collider.size.x * SquarePrefab.transform.localScale.x;
+        }
+
+        SpriteRenderer spriteRenderer = SquarePrefab.GetComponent<SpriteRenderer>();
+        if (spriteRenderer != null && spriteRenderer.sprite != null)
+        {
+            return spriteRenderer.sprite.bounds.size.x * SquarePrefab.transform.localScale.x;
+        }
+
+        return Geometry.CellSize;
     }
 }

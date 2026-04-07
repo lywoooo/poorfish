@@ -32,8 +32,15 @@ using UnityEngine;
 
 public class Geometry
 {
-    public const float CellSize = 3.2f;
-    private const float BoardHalfSpan = 11.2f;
+    private const float DefaultCellSize = 3.2f;
+
+    public static float CellSize { get; private set; } = DefaultCellSize;
+    public static float BoardHalfSpan => CellSize * 3.5f;
+
+    public static void SetCellSize(float cellSize)
+    {
+        CellSize = cellSize > 0f ? cellSize : DefaultCellSize;
+    }
 
     static public Vector3 PointFromGrid(Vector2Int gridPoint)
     {

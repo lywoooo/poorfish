@@ -284,12 +284,6 @@ public class GameManager : MonoBehaviour
         IsGameOver = true;
         Debug.Log(message);
 
-        var tileSelector = board.GetComponent<TileSelector>();
-        if (tileSelector != null)
-        {
-            tileSelector.enabled = false;
-        }
-
         var moveSelector = board.GetComponent<MoveSelector>();
         if (moveSelector != null)
         {
