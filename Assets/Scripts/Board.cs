@@ -27,18 +27,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
 using System.Collections.Generic;
 using UnityEngine;
 
 public class Board : MonoBehaviour
 {
-    public Material defaultMaterial;
-    public Material selectedMaterial;
+    [SerializeField] private float moveAnimationDuration = 0.12f;
+    [SerializeField] private float dragScaleMultiplier = 1.08f;
+    [SerializeField] private int draggingSortingOrder = 10;
 
-    private readonly Dictionary<GameObject, MeshRenderer> rendererCache = new Dictionary<GameObject, MeshRenderer>(32);
     private readonly Dictionary<GameObject, SpriteRenderer> spriteRendererCache = new Dictionary<GameObject, SpriteRenderer>(32);
-    private readonly Dictionary<GameObject, Color> defaultSpriteColors = new Dictionary<GameObject, Color>(32);
+    private readonly Dictionary<GameObject, Vector3> defaultPieceScales = new Dictionary<GameObject, Vector3>(32);
+    private readonly Dictionary<GameObject, int> defaultSortingOrders = new Dictionary<GameObject, int>(32);
+    private readonly Dictionary<GameObject, Coroutine> moveAnimations = new Dictionary<GameObject, Coroutine>(32);
 
     public GameObject AddPiece(GameObject piece, int col, int row)
     {
@@ -54,68 +55,57 @@ public class Board : MonoBehaviour
 
     public void MovePiece(GameObject piece, Vector2Int gridPoint)
     {
-        piece.transform.position = Geometry.PointFromGrid(gridPoint);
-    }
+        Vector3 targetPosition = Geometry.PointFromGrid(gridPoint);
+        StopMoveAnimation(piece);
 
-    public void SelectPiece(GameObject piece)
-    {
-        MeshRenderer meshRenderer = GetRenderer(piece);
-        if (meshRenderer != null)
+        if (moveAnimationDuration <= 0f)
         {
-            if (selectedMaterial != null)
-            {
-                meshRenderer.material = selectedMaterial;
-            }
+            piece.transform.position = targetPosition;
             return;
         }
 
-        SpriteRenderer spriteRenderer = GetSpriteRenderer(piece);
-        if (spriteRenderer != null)
-        {
-            if (!defaultSpriteColors.ContainsKey(piece))
-            {
-                defaultSpriteColors[piece] = spriteRenderer.color;
-            }
-
-            spriteRenderer.color = new Color(1f, 0.9f, 0.4f, 1f);
-        }
+        moveAnimations[piece] = StartCoroutine(AnimatePieceMove(piece, targetPosition));
     }
 
-    public void DeselectPiece(GameObject piece)
+    public void SetPieceWorldPosition(GameObject piece, Vector3 position)
     {
-        MeshRenderer meshRenderer = GetRenderer(piece);
-        if (meshRenderer != null)
+        if (piece == null)
         {
-            if (defaultMaterial != null)
-            {
-                meshRenderer.material = defaultMaterial;
-            }
             return;
         }
 
-        SpriteRenderer spriteRenderer = GetSpriteRenderer(piece);
-        if (spriteRenderer != null)
-        {
-            if (defaultSpriteColors.TryGetValue(piece, out Color defaultColor))
-            {
-                spriteRenderer.color = defaultColor;
-            }
-            else
-            {
-                spriteRenderer.color = Color.white;
-            }
-        }
+        StopMoveAnimation(piece);
+        piece.transform.position = new Vector3(position.x, position.y, 0f);
     }
 
-    private MeshRenderer GetRenderer(GameObject piece)
+    public void SetPieceDragState(GameObject piece, bool isDragging)
     {
-        if (!rendererCache.TryGetValue(piece, out MeshRenderer renderer) || renderer == null)
+        if (piece == null)
         {
-            renderer = piece.GetComponentInChildren<MeshRenderer>();
-            rendererCache[piece] = renderer;
+            return;
         }
 
-        return renderer;
+        if (!defaultPieceScales.ContainsKey(piece))
+        {
+            defaultPieceScales[piece] = piece.transform.localScale;
+        }
+
+        SpriteRenderer spriteRenderer = GetSpriteRenderer(piece);
+        if (spriteRenderer != null && !defaultSortingOrders.ContainsKey(piece))
+        {
+            defaultSortingOrders[piece] = spriteRenderer.sortingOrder;
+        }
+
+        piece.transform.localScale = isDragging
+            ? defaultPieceScales[piece] * dragScaleMultiplier
+            : defaultPieceScales[piece];
+
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.sortingOrder = isDragging
+                ? draggingSortingOrder
+                : defaultSortingOrders[piece];
+        }
     }
 
     private SpriteRenderer GetSpriteRenderer(GameObject piece)
@@ -127,5 +117,32 @@ public class Board : MonoBehaviour
         }
 
         return renderer;
+    }
+
+    private void StopMoveAnimation(GameObject piece)
+    {
+        if (piece != null && moveAnimations.TryGetValue(piece, out Coroutine animation) && animation != null)
+        {
+            StopCoroutine(animation);
+            moveAnimations.Remove(piece);
+        }
+    }
+
+    private System.Collections.IEnumerator AnimatePieceMove(GameObject piece, Vector3 targetPosition)
+    {
+        Vector3 startPosition = piece.transform.position;
+        float elapsed = 0f;
+
+        while (elapsed < moveAnimationDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / moveAnimationDuration);
+            float easedT = 1f - Mathf.Pow(1f - t, 3f);
+            piece.transform.position = Vector3.Lerp(startPosition, targetPosition, easedT);
+            yield return null;
+        }
+
+        piece.transform.position = targetPosition;
+        moveAnimations.Remove(piece);
     }
 }

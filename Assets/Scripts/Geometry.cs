@@ -33,9 +33,11 @@ using UnityEngine;
 public class Geometry
 {
     private const float DefaultCellSize = 3.2f;
+    private const int BoardDimension = 8;
 
     public static float CellSize { get; private set; } = DefaultCellSize;
-    public static float BoardHalfSpan => CellSize * 3.5f;
+    public static float BoardHalfSpan => CellSize * (BoardDimension - 1) * 0.5f;
+    public static float BoardExtent => CellSize * BoardDimension * 0.5f;
 
     public static void SetCellSize(float cellSize)
     {
@@ -56,8 +58,20 @@ public class Geometry
 
     static public Vector2Int GridFromPoint(Vector3 point)
     {
-        int col = Mathf.FloorToInt((BoardHalfSpan + point.x) / CellSize);
-        int row = Mathf.FloorToInt((BoardHalfSpan + point.y) / CellSize);
+        int col = Mathf.FloorToInt((BoardExtent + point.x) / CellSize);
+        int row = Mathf.FloorToInt((BoardExtent + point.y) / CellSize);
         return new Vector2Int(col, row);
+    }
+
+    static public bool TryGridFromPoint(Vector3 point, out Vector2Int gridPoint)
+    {
+        if (point.x < -BoardExtent || point.x >= BoardExtent || point.y < -BoardExtent || point.y >= BoardExtent)
+        {
+            gridPoint = default;
+            return false;
+        }
+
+        gridPoint = GridFromPoint(point);
+        return gridPoint.x >= 0 && gridPoint.x < BoardDimension && gridPoint.y >= 0 && gridPoint.y < BoardDimension;
     }
 }

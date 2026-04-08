@@ -104,12 +104,10 @@ public class AIController : MonoBehaviour
 
         if(bestPiece != null) {
             Vector2Int fromPos = bestMove.from;
-            gm.SelectPiece(bestPiece);
 
             if(gm.PieceAtGrid(bestMove.to) != null) gm.CapturePieceAt(bestMove.to);
 
             gm.Move(bestPiece, bestMove.to);
-            gm.DeselectPiece(bestPiece);
 
             Debug.Log(gm.currentPlayer.name + " (AI) played " + fromPos + " to " + bestMove.to + " with evaluated score of " + bestScore + " at depth " + completedDepth);
         }

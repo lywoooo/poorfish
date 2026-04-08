@@ -36,7 +36,6 @@ public class GameManager : MonoBehaviour
     public static GameManager instance;
 
     public Board board;
-    public bool touchMoveEnabled = true;
 
     // piece game object
     public GameObject piecePrefab;
@@ -136,15 +135,6 @@ public class GameManager : MonoBehaviour
         pieceColors[pieceObject] = player == white ? PieceColor.White : PieceColor.Black;
     }
 
-    public void SelectPieceAtGrid(Vector2Int gridPoint)
-    {
-        GameObject selectedPiece = pieces[gridPoint.x, gridPoint.y];
-        if (selectedPiece)
-        {
-            board.SelectPiece(selectedPiece);
-        }
-    }
-
     public List<Vector2Int> MovesForPiece(GameObject pieceObject)
     {
         Vector2Int gridPoint = GridForPiece(pieceObject);
@@ -215,16 +205,6 @@ public class GameManager : MonoBehaviour
         Destroy(pieceToCapture);
     }
 
-    public void SelectPiece(GameObject piece)
-    {
-        board.SelectPiece(piece);
-    }
-
-    public void DeselectPiece(GameObject piece)
-    {
-        board.DeselectPiece(piece);
-    }
-
     public bool DoesPieceBelongToCurrentPlayer(GameObject piece)
     {
         return piece != null && GetPieceColor(piece) == CurrentTurnColor;
@@ -267,11 +247,6 @@ public class GameManager : MonoBehaviour
     public PieceColor GetPieceColor(GameObject piece)
     {
         return pieceColors[piece];
-    }
-
-    public bool TouchMoveEnabled()
-    {
-        return touchMoveEnabled;
     }
 
     public void EndGame(string message)
