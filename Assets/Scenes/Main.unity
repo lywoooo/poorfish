@@ -275,6 +275,9 @@ MonoBehaviour:
     type: 3}
   darkColor: {r: 0.70980394, g: 0.53333336, b: 0.3882353, a: 1}
   lightColor: {r: 0.9411765, g: 0.8509804, b: 0.70980394, a: 1}
+  frameColor: {r: 0.18, g: 0.13, b: 0.09, a: 0.96}
+  lightCoordinateColor: {r: 0.71, g: 0.53, b: 0.39, a: 1}
+  darkCoordinateColor: {r: 0.94, g: 0.85, b: 0.71, a: 1}
 --- !u!114 &516697441
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -319,8 +322,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c2bdc2ddcf9444e79baeefcd40250d8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  defaultMaterial: {fileID: 0}
-  selectedMaterial: {fileID: 0}
+  moveAnimationDuration: 0.12
+  dragScaleMultiplier: 1.08
+  draggingSortingOrder: 10
 --- !u!114 &516697444
 MonoBehaviour:
   m_ObjectHideFlags: 0
