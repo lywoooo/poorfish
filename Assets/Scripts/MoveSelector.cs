@@ -154,6 +154,23 @@ public class MoveSelector : MonoBehaviour
         ShowLastMove(fromGridPoint, toGridPoint);
     }
 
+    public void ResetVisualState()
+    {
+        ClearSelection();
+        lastMoveFromGridPoint = null;
+        lastMoveToGridPoint = null;
+
+        if (lastMoveFromHighlight != null)
+        {
+            lastMoveFromHighlight.SetActive(false);
+        }
+
+        if (lastMoveToHighlight != null)
+        {
+            lastMoveToHighlight.SetActive(false);
+        }
+    }
+
     private void EnsureVisualsInitialized()
     {
         if (visualsInitialized)

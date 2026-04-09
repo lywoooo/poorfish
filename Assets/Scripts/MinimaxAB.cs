@@ -3,6 +3,18 @@ using UnityEngine;
 
 public class MinimaxAB : ISearchEngine
 {
+    private readonly struct SearchBias
+    {
+        public readonly int drawPenalty;
+        public readonly int repetitionPenalty;
+
+        public SearchBias(int drawPenalty, int repetitionPenalty)
+        {
+            this.drawPenalty = Mathf.Max(0, drawPenalty);
+            this.repetitionPenalty = Mathf.Max(0, repetitionPenalty);
+        }
+    }
+
     private enum EntryType
     {
         Exact,
@@ -22,6 +34,7 @@ public class MinimaxAB : ISearchEngine
     private const int MateScore = 900000;
     private readonly Dictionary<ulong, TranspositionEntry> transpositionTable = new Dictionary<ulong, TranspositionEntry>(32768);
     private readonly IEvaluator evaluator;
+    private readonly Dictionary<ulong, int> repetitionCounts = new Dictionary<ulong, int>(128);
     private float searchDeadline;
     private bool hasDeadline;
     private bool timedOut;
@@ -30,6 +43,7 @@ public class MinimaxAB : ISearchEngine
     private int transpositionHits;
     private int alphaBetaCutoffs;
     private float searchStartTime;
+    private SearchBias searchBias;
 
     public MinimaxAB(IEvaluator evaluator)
     {
@@ -45,6 +59,10 @@ public class MinimaxAB : ISearchEngine
         }
 
         BeginTimedSearch(settings.maxThinkTimeSeconds);
+        searchBias = new SearchBias(
+            settings.evaluationWeights.drawPenalty,
+            settings.evaluationWeights.repetitionPenalty);
+        repetitionCounts.Clear();
 
         ChessMove bestMove = legalMoves[0];
         int bestScore = evaluator.Evaluate(state);
@@ -137,131 +155,184 @@ public class MinimaxAB : ISearchEngine
         }
 
         ulong hash = state.ComputeHash();
-        int originalAlpha = alpha;
-        int originalBeta = beta;
+        int priorVisits = PushPathVisit(hash);
 
-        if (transpositionTable.TryGetValue(hash, out TranspositionEntry cached) && cached.depth >= depth)
+        try
         {
-            transpositionHits++;
-            switch (cached.type)
+            if (priorVisits > 0 && searchBias.repetitionPenalty > 0)
             {
-                case EntryType.Exact:
+                return RepetitionPenaltyForSideToMove(state.currentTurn, priorVisits);
+            }
+
+            int originalAlpha = alpha;
+            int originalBeta = beta;
+
+            if (transpositionTable.TryGetValue(hash, out TranspositionEntry cached) && cached.depth >= depth)
+            {
+                transpositionHits++;
+                switch (cached.type)
+                {
+                    case EntryType.Exact:
+                        return cached.score;
+                    case EntryType.LowerBound:
+                        alpha = Mathf.Max(alpha, cached.score);
+                        break;
+                    case EntryType.UpperBound:
+                        beta = Mathf.Min(beta, cached.score);
+                        break;
+                }
+
+                if (alpha >= beta)
+                {
                     return cached.score;
-                case EntryType.LowerBound:
-                    alpha = Mathf.Max(alpha, cached.score);
-                    break;
-                case EntryType.UpperBound:
-                    beta = Mathf.Min(beta, cached.score);
-                    break;
+                }
             }
 
-            if (alpha >= beta)
+            var legalMoves = MoveGenerator.getLegalMoves(state, state.currentTurn);
+
+            if (legalMoves.Count == 0)
             {
-                return cached.score;
+                int terminalScore;
+                if (MoveGenerator.isInCheck(state, state.currentTurn))
+                {
+                    terminalScore = state.currentTurn == PieceColor.White
+                        ? -MateScore - depth
+                        : MateScore + depth;
+                }
+                else
+                {
+                    terminalScore = DrawPenaltyForSideToMove(state.currentTurn);
+                }
+
+                transpositionTable[hash] = new TranspositionEntry { depth = depth, score = terminalScore, type = EntryType.Exact };
+                return terminalScore;
             }
-        }
 
-        var legalMoves = MoveGenerator.getLegalMoves(state, state.currentTurn);
-
-        if (legalMoves.Count == 0)
-        {
-            int terminalScore;
-            if (MoveGenerator.isInCheck(state, state.currentTurn))
+            if (depth == 0)
             {
-                terminalScore = state.currentTurn == PieceColor.White
-                    ? -MateScore - depth
-                    : MateScore + depth;
+                leafEvaluations++;
+                int evaluation = evaluator.Evaluate(state);
+                transpositionTable[hash] = new TranspositionEntry { depth = depth, score = evaluation, type = EntryType.Exact };
+                return evaluation;
+            }
+
+            bool maximizing = state.currentTurn == PieceColor.White;
+            int bestScore = maximizing ? NEG_INF : POS_INF;
+
+            if (maximizing)
+            {
+                foreach (var move in legalMoves)
+                {
+                    var newState = state.cloneBoard();
+                    newState.applyMove(move);
+                    newState.switchTurn();
+                    int eval = Search(newState, depth - 1, alpha, beta);
+                    if (timedOut)
+                    {
+                        return 0;
+                    }
+
+                    if (eval > bestScore)
+                    {
+                        bestScore = eval;
+                    }
+
+                    if (eval > alpha)
+                    {
+                        alpha = eval;
+                    }
+                    if (beta <= alpha)
+                    {
+                        alphaBetaCutoffs++;
+                        break;
+                    }
+                }
             }
             else
             {
-                terminalScore = 0;
+                foreach (var move in legalMoves)
+                {
+                    var newState = state.cloneBoard();
+                    newState.applyMove(move);
+                    newState.switchTurn();
+                    int eval = Search(newState, depth - 1, alpha, beta);
+                    if (timedOut)
+                    {
+                        return 0;
+                    }
+
+                    if (eval < bestScore)
+                    {
+                        bestScore = eval;
+                    }
+
+                    if (eval < beta)
+                    {
+                        beta = eval;
+                    }
+                    if (beta <= alpha)
+                    {
+                        alphaBetaCutoffs++;
+                        break;
+                    }
+                }
             }
 
-            transpositionTable[hash] = new TranspositionEntry { depth = depth, score = terminalScore, type = EntryType.Exact };
-            return terminalScore;
-        }
-
-        if (depth == 0)
-        {
-            leafEvaluations++;
-            int evaluation = evaluator.Evaluate(state);
-            transpositionTable[hash] = new TranspositionEntry { depth = depth, score = evaluation, type = EntryType.Exact };
-            return evaluation;
-        }
-
-        bool maximizing = state.currentTurn == PieceColor.White;
-        int bestScore = maximizing ? NEG_INF : POS_INF;
-
-        if (maximizing)
-        {
-            foreach (var move in legalMoves)
+            EntryType entryType = EntryType.Exact;
+            if (bestScore <= originalAlpha)
             {
-                var newState = state.cloneBoard();
-                newState.applyMove(move);
-                newState.switchTurn();
-                int eval = Search(newState, depth - 1, alpha, beta);
-                if (timedOut)
-                {
-                    return 0;
-                }
-
-                if (eval > bestScore)
-                {
-                    bestScore = eval;
-                }
-
-                if (eval > alpha)
-                {
-                    alpha = eval;
-                }
-                if (beta <= alpha)
-                {
-                    alphaBetaCutoffs++;
-                    break;
-                }
+                entryType = EntryType.UpperBound;
             }
-        }
-        else
-        {
-            foreach (var move in legalMoves)
+            else if (bestScore >= originalBeta)
             {
-                var newState = state.cloneBoard();
-                newState.applyMove(move);
-                newState.switchTurn();
-                int eval = Search(newState, depth - 1, alpha, beta);
-                if (timedOut)
-                {
-                    return 0;
-                }
-
-                if (eval < bestScore)
-                {
-                    bestScore = eval;
-                }
-
-                if (eval < beta)
-                {
-                    beta = eval;
-                }
-                if (beta <= alpha)
-                {
-                    alphaBetaCutoffs++;
-                    break;
-                }
+                entryType = EntryType.LowerBound;
             }
+
+            transpositionTable[hash] = new TranspositionEntry { depth = depth, score = bestScore, type = entryType };
+            return bestScore;
+        }
+        finally
+        {
+            PopPathVisit(hash, priorVisits);
+        }
+    }
+
+    private int PushPathVisit(ulong hash)
+    {
+        int priorVisits = repetitionCounts.TryGetValue(hash, out int visitCount) ? visitCount : 0;
+        repetitionCounts[hash] = priorVisits + 1;
+        return priorVisits;
+    }
+
+    private void PopPathVisit(ulong hash, int priorVisits)
+    {
+        if (priorVisits == 0)
+        {
+            repetitionCounts.Remove(hash);
+            return;
         }
 
-        EntryType entryType = EntryType.Exact;
-        if (bestScore <= originalAlpha)
+        repetitionCounts[hash] = priorVisits;
+    }
+
+    private int DrawPenaltyForSideToMove(PieceColor sideToMove)
+    {
+        return SignedPenaltyForSideToMove(sideToMove, searchBias.drawPenalty);
+    }
+
+    private int RepetitionPenaltyForSideToMove(PieceColor sideToMove, int priorVisits)
+    {
+        int scaledPenalty = searchBias.drawPenalty + (searchBias.repetitionPenalty * (priorVisits + 1));
+        return SignedPenaltyForSideToMove(sideToMove, scaledPenalty);
+    }
+
+    private static int SignedPenaltyForSideToMove(PieceColor sideToMove, int penalty)
+    {
+        if (penalty <= 0)
         {
-            entryType = EntryType.UpperBound;
-        }
-        else if (bestScore >= originalBeta)
-        {
-            entryType = EntryType.LowerBound;
+            return 0;
         }
 
-        transpositionTable[hash] = new TranspositionEntry { depth = depth, score = bestScore, type = entryType };
-        return bestScore;
+        return sideToMove == PieceColor.White ? penalty : -penalty;
     }
 }

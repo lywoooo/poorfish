@@ -258,7 +258,7 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
+  m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &516697440
@@ -278,12 +278,6 @@ MonoBehaviour:
   darkColor: {r: 0.70980394, g: 0.53333336, b: 0.3882353, a: 1}
   lightColor: {r: 0.9411765, g: 0.8509804, b: 0.70980394, a: 1}
   frameColor: {r: 0.18, g: 0.13, b: 0.09, a: 0.96}
-  lightCoordinateColor: {r: 0.71, g: 0.53, b: 0.39, a: 1}
-  darkCoordinateColor: {r: 0.94, g: 0.85, b: 0.71, a: 1}
-  coordinateShadowColor: {r: 0.11, g: 0.08, b: 0.05, a: 0.55}
-  coordinateScaleRatio: 0.085
-  fileLabelOffset: {x: 0.35, y: -0.34}
-  rankLabelOffset: {x: -0.35, y: 0.34}
 --- !u!114 &516697442
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -306,12 +300,12 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 516697437}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 69ccfe8c654294ec3a7a7cc1369e8c91, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  allowHumanInput: 1
+  allowHumanInput: 0
 --- !u!114 &516697445
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -319,14 +313,14 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 516697437}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a66427f08b37f12d0a62f2a96ac21c3f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   aiStartColorBlack: 0
-  moveDelay: 0.05
-  aiPickupDuration: 0.012
+  moveDelay: 0.01
+  aiPickupDuration: 0.0012
   aiPickupLiftRatio: 0.18
   engineProfile: {fileID: 0}
   fallbackSettings:
@@ -337,7 +331,9 @@ MonoBehaviour:
     evaluationWeights:
       materialWeight: 100
       pieceSquareWeight: 100
-      mobilityWeight: 0
+      mobilityWeight: 5
+      drawPenalty: 60
+      repetitionPenalty: 45
 --- !u!114 &516697446
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -345,14 +341,14 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 516697437}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a66427f08b37f12d0a62f2a96ac21c3f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   aiStartColorBlack: 1
-  moveDelay: 0.05
-  aiPickupDuration: 0.012
+  moveDelay: 0.01
+  aiPickupDuration: 0.0012
   aiPickupLiftRatio: 0.18
   engineProfile: {fileID: 0}
   fallbackSettings:
@@ -363,7 +359,9 @@ MonoBehaviour:
     evaluationWeights:
       materialWeight: 100
       pieceSquareWeight: 100
-      mobilityWeight: 0
+      mobilityWeight: 5
+      drawPenalty: 60
+      repetitionPenalty: 45
 --- !u!114 &516697447
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -376,8 +374,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7e8d9c0ab1c24f36a9b08bcae7c1d4f2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  matchMode: 0
+  matchMode: 2
   humanSide: 0
+  recordAIVsAIToCsv: 1
+  aiVsAiCsvFileName: ai_vs_ai_matches.csv
+  runAIVsAIBatch: 1
+  aiVsAiBatchGameCount: 2
+  rerunStalematesInBatch: 0
+  aiVsAiRestartDelay: 0.1
   gameManager: {fileID: 516697451}
   board: {fileID: 516697442}
   boardUI: {fileID: 516697440}

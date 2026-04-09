@@ -31,10 +31,21 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+public enum GameResultType
+{
+    None,
+    WhiteWin,
+    BlackWin,
+    DrawStalemate,
+    DrawInsufficientMaterial,
+    DrawOther
+}
+
 public class GameManager : MonoBehaviour
 {
     public static GameManager instance;
     public static event System.Action<Vector2Int, Vector2Int> MoveApplied;
+    public static event System.Action<string, GameResultType> GameEnded;
 
     public Board board;
 
@@ -69,6 +80,8 @@ public class GameManager : MonoBehaviour
     public Player currentPlayer;
     public Player otherPlayer;
     public bool IsGameOver { get; private set; }
+    public string LastGameResultMessage { get; private set; }
+    public GameResultType LastGameResultType { get; private set; }
     public PieceColor CurrentTurnColor => currentPlayer == white ? PieceColor.White : PieceColor.Black;
     public string CurrentTurnName => currentPlayer != null ? currentPlayer.name : string.Empty;
     public bool WhiteKingMoved { get; private set; }
@@ -102,16 +115,7 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        pieces = new GameObject[8, 8];
-        movedPawns = new HashSet<GameObject>();
-
-        white = new Player("white", true);
-        black = new Player("black", false);
-
-        currentPlayer = white;
-        otherPlayer = black;
-
-        InitialSetup();
+        RestartMatch();
     }
 
     private void InitialSetup()
@@ -348,7 +352,8 @@ public class GameManager : MonoBehaviour
 
         if (capturedPieceComponent.Type == PieceType.King)
         {
-            EndGame(currentPlayer.name + " wins!");
+            EndGame(currentPlayer == white ? "white wins!" : "black wins!",
+                currentPlayer == white ? GameResultType.WhiteWin : GameResultType.BlackWin);
         }
         currentPlayer.capturedPieces.Add(pieceToCapture);
         if (pieceOwners.TryGetValue(pieceToCapture, out Player owner))
@@ -416,7 +421,7 @@ public class GameManager : MonoBehaviour
         return PieceColor.White;
     }
 
-    public void EndGame(string message)
+    public void EndGame(string message, GameResultType resultType = GameResultType.DrawOther)
     {
         if (IsGameOver)
         {
@@ -424,7 +429,10 @@ public class GameManager : MonoBehaviour
         }
 
         IsGameOver = true;
+        LastGameResultMessage = message;
+        LastGameResultType = resultType;
         Debug.Log(message);
+        GameEnded?.Invoke(message, resultType);
 
         var moveSelector = board.GetComponent<MoveSelector>();
         if (moveSelector != null)
@@ -436,6 +444,38 @@ public class GameManager : MonoBehaviour
         {
             aiController.enabled = false;
         }
+    }
+
+    public void RestartMatch()
+    {
+        if (!ValidateConfiguration())
+        {
+            enabled = false;
+            return;
+        }
+
+        ClearBoardState();
+
+        pieces = new GameObject[8, 8];
+        movedPawns = new HashSet<GameObject>();
+
+        white = new Player("white", true);
+        black = new Player("black", false);
+        currentPlayer = white;
+        otherPlayer = black;
+
+        IsGameOver = false;
+        LastGameResultMessage = null;
+        LastGameResultType = GameResultType.None;
+        WhiteKingMoved = false;
+        WhiteKingsideRookMoved = false;
+        WhiteQueensideRookMoved = false;
+        BlackKingMoved = false;
+        BlackKingsideRookMoved = false;
+        BlackQueensideRookMoved = false;
+        EnPassantTarget = null;
+
+        InitialSetup();
     }
 
     private bool ValidateConfiguration()
@@ -469,6 +509,36 @@ public class GameManager : MonoBehaviour
         }
 
         return valid;
+    }
+
+    private void ClearBoardState()
+    {
+        var trackedPieces = new List<GameObject>(piecePositions.Keys);
+        foreach (GameObject trackedPiece in trackedPieces)
+        {
+            if (trackedPiece != null)
+            {
+                Destroy(trackedPiece);
+            }
+        }
+
+        piecePositions.Clear();
+        pieceComponentCache.Clear();
+        pieceColors.Clear();
+        pieceOwners.Clear();
+
+        if (pieces == null)
+        {
+            return;
+        }
+
+        for (int col = 0; col < 8; col++)
+        {
+            for (int row = 0; row < 8; row++)
+            {
+                pieces[col, row] = null;
+            }
+        }
     }
 
     private Piece GetPieceComponent(GameObject piece)
@@ -605,11 +675,12 @@ public class GameManager : MonoBehaviour
         {
             if (MoveGenerator.isInCheck(state, CurrentTurnColor))
             {
-                EndGame(otherPlayer.name + " wins by checkmate.");
+                EndGame(otherPlayer.name + " wins by checkmate.",
+                    otherPlayer == white ? GameResultType.WhiteWin : GameResultType.BlackWin);
             }
             else
             {
-                EndGame("Draw by stalemate.");
+                EndGame("Draw by stalemate.", GameResultType.DrawStalemate);
             }
 
             return;
@@ -617,7 +688,7 @@ public class GameManager : MonoBehaviour
 
         if (HasInsufficientMaterial(state))
         {
-            EndGame("Draw by insufficient material.");
+            EndGame("Draw by insufficient material.", GameResultType.DrawInsufficientMaterial);
         }
     }
 

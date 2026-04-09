@@ -13,12 +13,16 @@ public struct EvaluationWeights
     public int materialWeight;
     public int pieceSquareWeight;
     public int mobilityWeight;
+    public int drawPenalty;
+    public int repetitionPenalty;
 
     public static EvaluationWeights Default => new EvaluationWeights
     {
         materialWeight = 100,
         pieceSquareWeight = 100,
-        mobilityWeight = 0
+        mobilityWeight = 0,
+        drawPenalty = 60,
+        repetitionPenalty = 45
     };
 }
 

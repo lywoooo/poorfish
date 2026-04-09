@@ -85,11 +85,14 @@ public class AIController : MonoBehaviour
         {
             if (MoveGenerator.isInCheck(liveState, aiColorEnum))
             {
-                gm.EndGame((aiColorEnum == PieceColor.White ? "black" : "white") + " wins by checkmate.");
+                bool whiteWins = aiColorEnum == PieceColor.Black;
+                gm.EndGame(
+                    (whiteWins ? "white" : "black") + " wins by checkmate.",
+                    whiteWins ? GameResultType.WhiteWin : GameResultType.BlackWin);
             }
             else
             {
-                gm.EndGame("Draw by stalemate.");
+                gm.EndGame("Draw by stalemate.", GameResultType.DrawStalemate);
             }
             calculatingMove = false;
             yield break;
@@ -180,6 +183,14 @@ public class AIController : MonoBehaviour
             && left.logSearchStats == right.logSearchStats
             && left.evaluationWeights.materialWeight == right.evaluationWeights.materialWeight
             && left.evaluationWeights.pieceSquareWeight == right.evaluationWeights.pieceSquareWeight
-            && left.evaluationWeights.mobilityWeight == right.evaluationWeights.mobilityWeight;
+            && left.evaluationWeights.mobilityWeight == right.evaluationWeights.mobilityWeight
+            && left.evaluationWeights.drawPenalty == right.evaluationWeights.drawPenalty
+            && left.evaluationWeights.repetitionPenalty == right.evaluationWeights.repetitionPenalty;
+    }
+
+    public void ResetControllerState()
+    {
+        StopAllCoroutines();
+        calculatingMove = false;
     }
 }
