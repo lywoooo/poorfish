@@ -3,21 +3,23 @@ using UnityEngine;
 
 public class AIController : MonoBehaviour
 {
-
     // Assumes black is played by the AI
     public bool aiStartColorBlack = true;
 
-    // 4 ply search depth
-    public int searchDepth = 6;
-    public float maxThinkTimeSeconds = 1.5f;
-
     // Move delay for cool factor
-    public float moveDelay = 0.5f; 
+    public float moveDelay = 0.5f;
+    [SerializeField] private float aiPickupDuration = 0.12f;
+    [SerializeField] private float aiPickupLiftRatio = 0.18f;
+    public EngineProfile engineProfile;
+    public EngineSettings fallbackSettings = EngineSettings.Default;
     private bool calculatingMove = false;
+    private ISearchEngine searchEngine;
+    private IEvaluator evaluator;
+    private EngineSettings activeSettings;
 
     void Update()
     {
-        if(calculatingMove || GameManager.instance.IsGameOver) return;
+        if (calculatingMove || GameManager.instance == null || GameManager.instance.IsGameOver) return;
 
         string aiColor = aiStartColorBlack ? "black" : "white";
 
@@ -27,16 +29,54 @@ public class AIController : MonoBehaviour
         }
     }
 
+    private void Awake()
+    {
+        RebuildEngine();
+    }
+
+    private void OnValidate()
+    {
+        if (Application.isPlaying)
+        {
+            RebuildEngine();
+        }
+    }
+
+    private void RebuildEngine()
+    {
+        activeSettings = GetActiveSettings();
+        evaluator = new ConfigurableEvaluator(activeSettings.evaluationWeights, activeSettings.profileName + "_Evaluator");
+        searchEngine = new MinimaxAB(evaluator);
+    }
+
+    private EngineSettings GetActiveSettings()
+    {
+        EngineSettings settings = engineProfile != null ? engineProfile.ToSettings() : fallbackSettings;
+        if (settings.searchDepth < 1)
+        {
+            settings.searchDepth = 1;
+        }
+
+        if (string.IsNullOrWhiteSpace(settings.profileName))
+        {
+            settings.profileName = "Baseline";
+        }
+
+        return settings;
+    }
+
     private IEnumerator turnEval() {
         yield return new WaitForSeconds(moveDelay);
 
         var gm = GameManager.instance;
         string aiColor = aiStartColorBlack ? "black" : "white";
         PieceColor aiColorEnum = aiStartColorBlack ? PieceColor.Black : PieceColor.White;
-        GameObject bestPiece = null;
-        ChessMove bestMove = default;
-        int bestScore = aiStartColorBlack ? MinimaxAB.POS_INF : MinimaxAB.NEG_INF;
-        int completedDepth = 0;
+        EngineSettings settings = GetActiveSettings();
+        if (searchEngine == null || evaluator == null || !SettingsMatch(settings, activeSettings))
+        {
+            RebuildEngine();
+            settings = activeSettings;
+        }
 
         BoardState liveState = BoardState.boardSnapshot();
         var legalMoves = MoveGenerator.getLegalMoves(liveState, aiColorEnum);
@@ -45,82 +85,101 @@ public class AIController : MonoBehaviour
         {
             if (MoveGenerator.isInCheck(liveState, aiColorEnum))
             {
-                Debug.Log(aiColor + " is checkmated.");
+                gm.EndGame((aiColorEnum == PieceColor.White ? "black" : "white") + " wins by checkmate.");
             }
             else
             {
-                Debug.Log("stalemate");
+                gm.EndGame("Draw by stalemate.");
             }
-
-            var moveSelector = GetComponent<MoveSelector>();
-            if (moveSelector != null) moveSelector.enabled = false;
-            enabled = false;
             calculatingMove = false;
             yield break;
         }
 
-        MinimaxAB.BeginTimedSearch(maxThinkTimeSeconds);
+        SearchResult result = searchEngine.FindBestMove(liveState, aiColorEnum, settings);
+        GameObject movedPiece = null;
 
-        for (int depth = 1; depth <= searchDepth; depth++)
-        {
-            GameObject depthBestPiece = null;
-            ChessMove depthBestMove = default;
-            int depthBestScore = aiStartColorBlack ? MinimaxAB.POS_INF : MinimaxAB.NEG_INF;
-
-            foreach (ChessMove move in legalMoves)
+        if(result.hasMove) {
+            Vector2Int fromPos = result.bestMove.from;
+            movedPiece = gm.PieceAtGrid(fromPos);
+            if (movedPiece != null && gm.board != null)
             {
-                var prospective = liveState.cloneBoard();
-                prospective.applyMove(move);
-                prospective.switchTurn();
-
-                int score = MinimaxAB.search(prospective, depth - 1, MinimaxAB.NEG_INF, MinimaxAB.POS_INF);
-                if (MinimaxAB.TimedOut())
-                {
-                    break;
-                }
-
-                bool prospectiveScoreIsBetter = aiStartColorBlack ? score < depthBestScore : score > depthBestScore;
-
-                if (prospectiveScoreIsBetter || depthBestPiece == null)
-                {
-                    depthBestScore = score;
-                    depthBestMove = move;
-                    depthBestPiece = gm.PieceAtGrid(move.from);
-                }
+                yield return AnimateAIPickup(gm.board, movedPiece);
             }
 
-            if (MinimaxAB.TimedOut())
+            gm.ApplyMove(result.bestMove);
+
+            Debug.Log(gm.currentPlayer.name + " (AI) [" + settings.profileName + "] played "
+                + fromPos + " to " + result.bestMove.to
+                + " with evaluated score of " + result.bestScore
+                + " at depth " + result.stats.completedDepth);
+
+            if (settings.logSearchStats)
             {
-                break;
+                Debug.Log("Search stats [" + settings.profileName + "] "
+                    + "nodes=" + result.stats.nodesVisited
+                    + ", evals=" + result.stats.leafEvaluations
+                    + ", ttHits=" + result.stats.transpositionHits
+                    + ", cutoffs=" + result.stats.alphaBetaCutoffs
+                    + ", elapsedMs=" + result.stats.elapsedMilliseconds.ToString("F1")
+                    + ", evaluator=" + evaluator.Name);
             }
-
-            completedDepth = depth;
-            bestScore = depthBestScore;
-            bestMove = depthBestMove;
-            bestPiece = depthBestPiece;
-        }
-
-        MinimaxAB.EndTimedSearch();
-
-        if(bestPiece != null) {
-            Vector2Int fromPos = bestMove.from;
-
-            if(gm.PieceAtGrid(bestMove.to) != null) gm.CapturePieceAt(bestMove.to);
-
-            gm.Move(bestPiece, bestMove.to);
-
-            Debug.Log(gm.currentPlayer.name + " (AI) played " + fromPos + " to " + bestMove.to + " with evaluated score of " + bestScore + " at depth " + completedDepth);
         }
 
         if (!gm.IsGameOver)
         {
+            while (movedPiece != null && gm.board != null && gm.board.IsPieceAnimating(movedPiece))
+            {
+                yield return null;
+            }
+
+            if (movedPiece != null && gm.board != null)
+            {
+                gm.board.SetPieceDragState(movedPiece, false);
+            }
+
             gm.NextPlayer();
             var moveSelector = GetComponent<MoveSelector>();
-            if (moveSelector != null)
+            if (!gm.IsGameOver && moveSelector != null)
             {
                 moveSelector.EnterState();
             }
         }
         calculatingMove = false;
+    }
+
+    private IEnumerator AnimateAIPickup(Board board, GameObject piece)
+    {
+        if (aiPickupDuration <= 0f)
+        {
+            board.SetPieceDragState(piece, true);
+            yield break;
+        }
+
+        Vector3 startPosition = piece.transform.position;
+        Vector3 liftedPosition = startPosition + Vector3.up * (Geometry.CellSize * aiPickupLiftRatio);
+        board.SetPieceDragState(piece, true);
+
+        float elapsed = 0f;
+        while (elapsed < aiPickupDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / aiPickupDuration);
+            float easedT = 1f - Mathf.Pow(1f - t, 3f);
+            board.SetPieceWorldPosition(piece, Vector3.Lerp(startPosition, liftedPosition, easedT));
+            yield return null;
+        }
+
+        board.SetPieceWorldPosition(piece, liftedPosition);
+    }
+
+    private static bool SettingsMatch(EngineSettings left, EngineSettings right)
+    {
+        return left.profileName == right.profileName
+            && left.searchDepth == right.searchDepth
+            && Mathf.Approximately(left.maxThinkTimeSeconds, right.maxThinkTimeSeconds)
+            && left.logSearchStats == right.logSearchStats
+            && left.evaluationWeights.materialWeight == right.evaluationWeights.materialWeight
+            && left.evaluationWeights.pieceSquareWeight == right.evaluationWeights.pieceSquareWeight
+            && left.evaluationWeights.mobilityWeight == right.evaluationWeights.mobilityWeight;
     }
 }

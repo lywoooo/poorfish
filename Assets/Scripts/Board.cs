@@ -41,6 +41,13 @@ public class Board : MonoBehaviour
     private readonly Dictionary<GameObject, int> defaultSortingOrders = new Dictionary<GameObject, int>(32);
     private readonly Dictionary<GameObject, Coroutine> moveAnimations = new Dictionary<GameObject, Coroutine>(32);
 
+    public float MoveAnimationDuration => moveAnimationDuration;
+
+    public bool IsPieceAnimating(GameObject piece)
+    {
+        return piece != null && moveAnimations.ContainsKey(piece);
+    }
+
     public GameObject AddPiece(GameObject piece, int col, int row)
     {
         Vector2Int gridPoint = Geometry.GridPoint(col, row);

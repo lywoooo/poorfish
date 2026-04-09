@@ -12,7 +12,7 @@ public class MoveSelector : MonoBehaviour
     private const float CaptureRingThicknessRatio = 0.12f;
     private const float DragThresholdPixels = 8f;
     private const float DragPointerLift = 0.18f;
-    private const int SelectedSquareSortingOrder = 2;
+    private const int SelectedSquareSortingOrder = 1;
     private const int LastMoveSortingOrder = 1;
     private const int MoveIndicatorSortingOrder = 4;
 
@@ -25,6 +25,8 @@ public class MoveSelector : MonoBehaviour
     private GameObject selectedSquareHighlight;
     private GameObject lastMoveFromHighlight;
     private GameObject lastMoveToHighlight;
+    private Vector2Int? lastMoveFromGridPoint;
+    private Vector2Int? lastMoveToGridPoint;
     private GameObject movingPiece;
     private GameObject dragCandidatePiece;
     private List<Vector2Int> moveLocations;
@@ -32,28 +34,60 @@ public class MoveSelector : MonoBehaviour
     private List<GameObject> locationHighlights;
     private Camera cachedCamera;
     private GameManager cachedGameManager;
+    [SerializeField] private bool allowHumanInput = true;
     private bool isDraggingPiece;
     private bool clearSelectionOnPointerUp;
     private Vector2Int dragStartGridPoint;
     private Vector3 dragStartWorldPosition;
     private Vector2 dragStartMousePosition;
+    private bool visualsInitialized;
+    private bool awaitingPromotionChoice;
+    private List<ChessMove> pendingPromotionMoves;
+    private Vector2Int pendingPromotionGridPoint;
+    private readonly Dictionary<Vector2Int, PieceType> promotionOptionLookup = new Dictionary<Vector2Int, PieceType>(4);
+    private readonly List<GameObject> promotionOptionObjects = new List<GameObject>(5);
+    private bool hasCancelPromotionSquare;
+    private Vector2Int cancelPromotionGridPoint;
 
-    void Start()
+    public bool AllowHumanInput
+    {
+        get => allowHumanInput;
+        set
+        {
+            allowHumanInput = value;
+            if (!allowHumanInput)
+            {
+                ClearSelection();
+            }
+
+            enabled = allowHumanInput;
+        }
+    }
+
+    void Awake()
     {
         cachedCamera = Camera.main;
         cachedGameManager = GameManager.instance;
         boardUI = GetComponent<BoardUI>();
+        EnsureVisualsInitialized();
+    }
 
-        if (!TryCacheBoardSquareVisual())
+    void OnEnable()
+    {
+        GameManager.MoveApplied += NotifyMoveApplied;
+    }
+
+    void OnDisable()
+    {
+        GameManager.MoveApplied -= NotifyMoveApplied;
+    }
+
+    void Start()
+    {
+        if (!visualsInitialized)
         {
-            Debug.LogError("MoveSelector could not find a usable square sprite from BoardUI.", this);
             enabled = false;
-            return;
         }
-
-        selectedSquareHighlight = CreateSquareOverlay("SelectedSquare", SelectedSquareColor, SelectedSquareSortingOrder);
-        lastMoveFromHighlight = CreateSquareOverlay("LastMoveFrom", LastMoveColor, LastMoveSortingOrder);
-        lastMoveToHighlight = CreateSquareOverlay("LastMoveTo", LastMoveColor, LastMoveSortingOrder);
     }
 
     void Update()
@@ -69,6 +103,12 @@ public class MoveSelector : MonoBehaviour
 
         if (cachedGameManager.IsGameOver)
         {
+            return;
+        }
+
+        if (awaitingPromotionChoice)
+        {
+            HandlePromotionPointerInput();
             return;
         }
 
@@ -103,7 +143,35 @@ public class MoveSelector : MonoBehaviour
 
     public void EnterState()
     {
-        enabled = true;
+        EnsureVisualsInitialized();
+        enabled = allowHumanInput;
+    }
+
+    public void NotifyMoveApplied(Vector2Int fromGridPoint, Vector2Int toGridPoint)
+    {
+        EnsureVisualsInitialized();
+        ClearSelection();
+        ShowLastMove(fromGridPoint, toGridPoint);
+    }
+
+    private void EnsureVisualsInitialized()
+    {
+        if (visualsInitialized)
+        {
+            return;
+        }
+
+        boardUI = GetComponent<BoardUI>();
+        if (!TryCacheBoardSquareVisual())
+        {
+            Debug.LogError("MoveSelector could not find a usable square sprite from BoardUI.", this);
+            return;
+        }
+
+        selectedSquareHighlight = CreateSquareOverlay("SelectedSquare", SelectedSquareColor, SelectedSquareSortingOrder);
+        lastMoveFromHighlight = CreateSquareOverlay("LastMoveFrom", LastMoveColor, LastMoveSortingOrder);
+        lastMoveToHighlight = CreateSquareOverlay("LastMoveTo", LastMoveColor, LastMoveSortingOrder);
+        visualsInitialized = true;
     }
 
     private bool TryCacheBoardSquareVisual()
@@ -239,6 +307,10 @@ public class MoveSelector : MonoBehaviour
         foreach (Vector2Int loc in moveLocations)
         {
             bool isCapture = cachedGameManager.PieceAtGrid(loc) != null;
+            if (!isCapture && cachedGameManager.TryGetLegalMove(movingPiece, loc, out ChessMove move))
+            {
+                isCapture = move.isEnPassant;
+            }
             GameObject highlight = CreateMoveIndicator(loc, isCapture);
             if (highlight != null)
             {
@@ -255,7 +327,6 @@ public class MoveSelector : MonoBehaviour
         }
 
         Vector2Int startGridPoint = cachedGameManager.GridForPiece(movingPiece);
-        GameObject clickedPiece = cachedGameManager.PieceAtGrid(gridPoint);
 
         if (isDraggingPiece)
         {
@@ -263,23 +334,38 @@ public class MoveSelector : MonoBehaviour
             isDraggingPiece = false;
         }
 
-        if (clickedPiece == null)
+        List<ChessMove> candidateMoves = cachedGameManager.LegalMovesForPiece(movingPiece);
+        List<ChessMove> matchingMoves = new List<ChessMove>();
+        foreach (ChessMove candidateMove in candidateMoves)
         {
-            cachedGameManager.Move(movingPiece, gridPoint);
-        }
-        else
-        {
-            cachedGameManager.CapturePieceAt(gridPoint);
-            cachedGameManager.Move(movingPiece, gridPoint);
+            if (candidateMove.to == gridPoint)
+            {
+                matchingMoves.Add(candidateMove);
+            }
         }
 
-        FinishMove(startGridPoint, gridPoint);
+        if (matchingMoves.Count == 0)
+        {
+            cachedGameManager.board.SetPieceWorldPosition(movingPiece, dragStartWorldPosition);
+            ShowSelectedSquare(dragStartGridPoint);
+            return;
+        }
+
+        ChessMove move = matchingMoves[0];
+        if (matchingMoves.Count > 1 && matchingMoves[0].promotionType != PieceType.None)
+        {
+            BeginPromotionChoice(matchingMoves);
+            return;
+        }
+
+        cachedGameManager.ApplyMove(move);
+        FinishMove();
     }
 
-    private void FinishMove(Vector2Int fromGridPoint, Vector2Int toGridPoint)
+    private void FinishMove()
     {
         ClearSelection();
-        ShowLastMove(fromGridPoint, toGridPoint);
+        HidePromotionPrompt();
 
         if (!cachedGameManager.IsGameOver)
         {
@@ -300,6 +386,9 @@ public class MoveSelector : MonoBehaviour
         dragCandidatePiece = null;
         isDraggingPiece = false;
         clearSelectionOnPointerUp = false;
+        awaitingPromotionChoice = false;
+        pendingPromotionMoves = null;
+        HidePromotionPrompt();
 
         if (selectedSquareHighlight != null)
         {
@@ -329,6 +418,9 @@ public class MoveSelector : MonoBehaviour
 
     private void ShowLastMove(Vector2Int fromGridPoint, Vector2Int toGridPoint)
     {
+        lastMoveFromGridPoint = fromGridPoint;
+        lastMoveToGridPoint = toGridPoint;
+
         if (lastMoveFromHighlight != null)
         {
             lastMoveFromHighlight.transform.position = Geometry.PointFromGrid(fromGridPoint);
@@ -364,6 +456,207 @@ public class MoveSelector : MonoBehaviour
         overlay.transform.localScale = new Vector3(ringSize, ringSize, 1f);
 
         return overlay;
+    }
+
+    private void BeginPromotionChoice(List<ChessMove> promotionMoves)
+    {
+        awaitingPromotionChoice = true;
+        pendingPromotionMoves = promotionMoves;
+        pendingPromotionGridPoint = promotionMoves[0].to;
+        ShowPromotionPrompt();
+    }
+
+    private void ShowPromotionPrompt()
+    {
+        RebuildPromotionPrompt();
+    }
+
+    private void HidePromotionPrompt()
+    {
+        foreach (GameObject promotionObject in promotionOptionObjects)
+        {
+            if (promotionObject != null)
+            {
+                Destroy(promotionObject);
+            }
+        }
+
+        promotionOptionObjects.Clear();
+        promotionOptionLookup.Clear();
+        hasCancelPromotionSquare = false;
+    }
+
+    private void RebuildPromotionPrompt()
+    {
+        HidePromotionPrompt();
+
+        if (cachedGameManager == null || movingPiece == null)
+        {
+            return;
+        }
+
+        PieceColor color = cachedGameManager.GetPieceColor(movingPiece);
+        int direction = pendingPromotionGridPoint.y >= 4 ? -1 : 1;
+        PieceType[] promotionOrder = { PieceType.Queen, PieceType.Knight, PieceType.Rook, PieceType.Bishop };
+
+        for (int i = 0; i < promotionOrder.Length; i++)
+        {
+            Vector2Int optionGrid = new Vector2Int(pendingPromotionGridPoint.x, pendingPromotionGridPoint.y + (direction * i));
+            promotionOptionLookup[optionGrid] = promotionOrder[i];
+            CreatePromotionOptionObject(optionGrid, cachedGameManager.SpriteForPiece(promotionOrder[i], color));
+        }
+
+        Vector2Int cancelGrid = new Vector2Int(pendingPromotionGridPoint.x, pendingPromotionGridPoint.y + (direction * promotionOrder.Length));
+        if (BoardState.InBounds(cancelGrid.x, cancelGrid.y))
+        {
+            hasCancelPromotionSquare = true;
+            cancelPromotionGridPoint = cancelGrid;
+            CreatePromotionCancelObject(cancelGrid);
+        }
+    }
+
+    private void HandlePromotionPointerInput()
+    {
+        if (Input.GetMouseButtonDown(1) || Input.GetKeyDown(KeyCode.Escape))
+        {
+            CancelPromotionChoice();
+            return;
+        }
+
+        if (!Input.GetMouseButtonDown(0))
+        {
+            return;
+        }
+
+        if (!TryGetCursorWorldPoint(out Vector3 cursorWorldPoint))
+        {
+            CancelPromotionChoice();
+            return;
+        }
+
+        if (!Geometry.TryGridFromPoint(cursorWorldPoint, out Vector2Int gridPoint))
+        {
+            CancelPromotionChoice();
+            return;
+        }
+
+        if (promotionOptionLookup.TryGetValue(gridPoint, out PieceType promotionType))
+        {
+            ChoosePromotion(promotionType);
+            return;
+        }
+
+        if (hasCancelPromotionSquare && gridPoint == cancelPromotionGridPoint)
+        {
+            CancelPromotionChoice();
+            return;
+        }
+
+        CancelPromotionChoice();
+    }
+
+    private void ChoosePromotion(PieceType promotionType)
+    {
+        if (pendingPromotionMoves == null)
+        {
+            return;
+        }
+
+        foreach (ChessMove promotionMove in pendingPromotionMoves)
+        {
+            if (promotionMove.promotionType != promotionType)
+            {
+                continue;
+            }
+
+            awaitingPromotionChoice = false;
+            pendingPromotionMoves = null;
+            pendingPromotionGridPoint = default;
+            HidePromotionPrompt();
+            cachedGameManager.ApplyMove(promotionMove);
+            FinishMove();
+            return;
+        }
+    }
+
+    private void CancelPromotionChoice()
+    {
+        awaitingPromotionChoice = false;
+        pendingPromotionMoves = null;
+        pendingPromotionGridPoint = default;
+        HidePromotionPrompt();
+        if (movingPiece != null)
+        {
+            cachedGameManager.board.SetPieceWorldPosition(movingPiece, dragStartWorldPosition);
+            ShowSelectedSquare(dragStartGridPoint);
+        }
+    }
+
+    private GameObject CreatePromotionOptionObject(Vector2Int gridPoint, Sprite pieceSprite)
+    {
+        GameObject optionObject = CreateSquareOverlay($"PromotionOption_{gridPoint.x}_{gridPoint.y}", Color.white, MoveIndicatorSortingOrder + 1);
+        optionObject.transform.position = Geometry.PointFromGrid(gridPoint);
+        optionObject.SetActive(true);
+
+        GameObject iconObject = new GameObject("Icon");
+        iconObject.transform.SetParent(optionObject.transform, false);
+        SpriteRenderer iconRenderer = iconObject.AddComponent<SpriteRenderer>();
+        iconRenderer.sprite = pieceSprite;
+        iconRenderer.sortingOrder = MoveIndicatorSortingOrder + 2;
+        FitSpriteToSquare(iconObject.transform, pieceSprite, 0.72f);
+
+        promotionOptionObjects.Add(optionObject);
+        return optionObject;
+    }
+
+    private GameObject CreatePromotionCancelObject(Vector2Int gridPoint)
+    {
+        GameObject cancelObject = CreateSquareOverlay($"PromotionCancel_{gridPoint.x}_{gridPoint.y}", new Color(0.9f, 0.9f, 0.9f, 1f), MoveIndicatorSortingOrder + 1);
+        cancelObject.transform.position = Geometry.PointFromGrid(gridPoint);
+        ApplyInsetScale(cancelObject.transform, 0.72f);
+        cancelObject.SetActive(true);
+
+        GameObject iconObject = new GameObject("CancelIcon");
+        iconObject.transform.SetParent(cancelObject.transform, false);
+        TextMesh textMesh = iconObject.AddComponent<TextMesh>();
+        textMesh.text = "\u00D7";
+        textMesh.anchor = TextAnchor.MiddleCenter;
+        textMesh.alignment = TextAlignment.Center;
+        textMesh.fontSize = 64;
+        textMesh.characterSize = 0.13f;
+        textMesh.color = new Color(0.45f, 0.45f, 0.45f, 1f);
+        Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        if (font != null)
+        {
+            textMesh.font = font;
+            MeshRenderer meshRenderer = iconObject.GetComponent<MeshRenderer>();
+            meshRenderer.sharedMaterial = font.material;
+            meshRenderer.sortingOrder = MoveIndicatorSortingOrder + 2;
+        }
+
+        promotionOptionObjects.Add(cancelObject);
+        return cancelObject;
+    }
+
+    private void FitSpriteToSquare(Transform iconTransform, Sprite sprite, float squareFillRatio)
+    {
+        if (sprite == null)
+        {
+            return;
+        }
+
+        Vector3 spriteSize = sprite.bounds.size;
+        if (spriteSize.x <= Mathf.Epsilon || spriteSize.y <= Mathf.Epsilon)
+        {
+            return;
+        }
+
+        Vector3 parentScale = iconTransform.parent != null ? iconTransform.parent.lossyScale : Vector3.one;
+        float targetSize = Geometry.CellSize * squareFillRatio;
+        float xScale = targetSize / (spriteSize.x * Mathf.Max(parentScale.x, Mathf.Epsilon));
+        float yScale = targetSize / (spriteSize.y * Mathf.Max(parentScale.y, Mathf.Epsilon));
+        float uniformScale = Mathf.Min(xScale, yScale);
+        iconTransform.localScale = new Vector3(uniformScale, uniformScale, 1f);
     }
 
     private GameObject CreateMoveDot(Vector2Int gridPoint)
@@ -476,6 +769,16 @@ public class MoveSelector : MonoBehaviour
             return;
         }
 
+        if (lastMoveFromHighlight != null && lastMoveFromGridPoint.HasValue)
+        {
+            lastMoveFromHighlight.SetActive(lastMoveFromGridPoint.Value != gridPoint);
+        }
+
+        if (lastMoveToHighlight != null && lastMoveToGridPoint.HasValue)
+        {
+            lastMoveToHighlight.SetActive(lastMoveToGridPoint.Value != gridPoint);
+        }
+
         selectedSquareHighlight.transform.position = Geometry.PointFromGrid(gridPoint);
         selectedSquareHighlight.SetActive(true);
     }
@@ -507,6 +810,11 @@ public class MoveSelector : MonoBehaviour
 
     private bool TryGetCursorWorldPoint(out Vector3 worldPoint)
     {
+        if (cachedCamera == null)
+        {
+            cachedCamera = Camera.main;
+        }
+
         if (cachedCamera == null)
         {
             worldPoint = default;

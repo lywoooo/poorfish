@@ -34,6 +34,7 @@ using UnityEngine;
 public class GameManager : MonoBehaviour
 {
     public static GameManager instance;
+    public static event System.Action<Vector2Int, Vector2Int> MoveApplied;
 
     public Board board;
 
@@ -61,6 +62,7 @@ public class GameManager : MonoBehaviour
     private readonly Dictionary<GameObject, Vector2Int> piecePositions = new Dictionary<GameObject, Vector2Int>(32);
     private readonly Dictionary<GameObject, Piece> pieceComponentCache = new Dictionary<GameObject, Piece>(32);
     private readonly Dictionary<GameObject, PieceColor> pieceColors = new Dictionary<GameObject, PieceColor>(32);
+    private readonly Dictionary<GameObject, Player> pieceOwners = new Dictionary<GameObject, Player>(32);
 
     private Player white;
     private Player black;
@@ -68,14 +70,38 @@ public class GameManager : MonoBehaviour
     public Player otherPlayer;
     public bool IsGameOver { get; private set; }
     public PieceColor CurrentTurnColor => currentPlayer == white ? PieceColor.White : PieceColor.Black;
+    public string CurrentTurnName => currentPlayer != null ? currentPlayer.name : string.Empty;
+    public bool WhiteKingMoved { get; private set; }
+    public bool WhiteKingsideRookMoved { get; private set; }
+    public bool WhiteQueensideRookMoved { get; private set; }
+    public bool BlackKingMoved { get; private set; }
+    public bool BlackKingsideRookMoved { get; private set; }
+    public bool BlackQueensideRookMoved { get; private set; }
+    public Vector2Int? EnPassantTarget { get; private set; }
 
     void Awake()
     {
         instance = this;
     }
 
+    void OnValidate()
+    {
+        if (board == null)
+        {
+            board = FindFirstObjectByType<Board>();
+        }
+
+        ValidateConfiguration();
+    }
+
     void Start ()
     {
+        if (!ValidateConfiguration())
+        {
+            enabled = false;
+            return;
+        }
+
         pieces = new GameObject[8, 8];
         movedPawns = new HashSet<GameObject>();
 
@@ -133,6 +159,7 @@ public class GameManager : MonoBehaviour
         piecePositions[pieceObject] = new Vector2Int(col, row);
         pieceComponentCache[pieceObject] = pieceComponent;
         pieceColors[pieceObject] = player == white ? PieceColor.White : PieceColor.Black;
+        pieceOwners[pieceObject] = player;
     }
 
     public List<Vector2Int> MovesForPiece(GameObject pieceObject)
@@ -156,6 +183,120 @@ public class GameManager : MonoBehaviour
         }
 
         return locations;
+    }
+
+    public List<ChessMove> LegalMovesForPiece(GameObject pieceObject)
+    {
+        Vector2Int gridPoint = GridForPiece(pieceObject);
+        if (gridPoint.x < 0)
+        {
+            return new List<ChessMove>(0);
+        }
+
+        BoardState state = BoardState.boardSnapshot();
+        List<ChessMove> legalMoves = MoveGenerator.getLegalMoves(state, CurrentTurnColor);
+        List<ChessMove> pieceMoves = new List<ChessMove>();
+
+        foreach (ChessMove move in legalMoves)
+        {
+            if (move.from == gridPoint)
+            {
+                pieceMoves.Add(move);
+            }
+        }
+
+        return pieceMoves;
+    }
+
+    public bool TryGetLegalMove(GameObject pieceObject, Vector2Int destination, out ChessMove move)
+    {
+        move = default;
+
+        Vector2Int gridPoint = GridForPiece(pieceObject);
+        if (gridPoint.x < 0)
+        {
+            return false;
+        }
+
+        BoardState state = BoardState.boardSnapshot();
+        List<ChessMove> legalMoves = MoveGenerator.getLegalMoves(state, CurrentTurnColor);
+
+        foreach (ChessMove legalMove in legalMoves)
+        {
+            if (legalMove.from == gridPoint && legalMove.to == destination)
+            {
+                move = legalMove;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public void ApplyMove(ChessMove move)
+    {
+        GameObject piece = PieceAtGrid(move.from);
+        if (piece == null)
+        {
+            return;
+        }
+
+        Piece pieceComponent = GetPieceComponent(piece);
+        Vector2Int startGridPoint = move.from;
+        Vector2Int destination = move.to;
+        GameObject capturedPiece = null;
+        EnPassantTarget = null;
+
+        if (move.isEnPassant)
+        {
+            int capturedPawnRow = destination.y + (GetPieceColor(piece) == PieceColor.White ? -1 : 1);
+            capturedPiece = PieceAtGrid(new Vector2Int(destination.x, capturedPawnRow));
+        }
+        else
+        {
+            capturedPiece = PieceAtGrid(destination);
+        }
+
+        if (capturedPiece != null)
+        {
+            CapturePiece(capturedPiece);
+        }
+
+        UpdateMoveState(piece, pieceComponent.Type, startGridPoint);
+
+        if (pieceComponent.Type == PieceType.Pawn)
+        {
+            movedPawns.Add(piece);
+
+            if (Mathf.Abs(destination.y - startGridPoint.y) == 2)
+            {
+                EnPassantTarget = new Vector2Int(startGridPoint.x, (startGridPoint.y + destination.y) / 2);
+            }
+        }
+
+        Move(piece, destination);
+
+        if (move.isCastling)
+        {
+            GameObject rook = PieceAtGrid(move.rookFrom);
+            if (rook != null)
+            {
+                Move(rook, move.rookTo);
+                UpdateMoveState(rook, PieceType.Rook, move.rookFrom);
+            }
+        }
+
+        if (pieceComponent.Type == PieceType.Pawn)
+        {
+            bool whitePromotes = GetPieceColor(piece) == PieceColor.White && destination.y == 7;
+            bool blackPromotes = GetPieceColor(piece) == PieceColor.Black && destination.y == 0;
+            if (whitePromotes || blackPromotes)
+            {
+                PromotePiece(piece, move.promotionType == PieceType.None ? PieceType.Queen : move.promotionType);
+            }
+        }
+
+        MoveApplied?.Invoke(startGridPoint, destination);
     }
 
     public void Move(GameObject piece, Vector2Int gridPoint)
@@ -191,17 +332,36 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        if (GetPieceComponent(pieceToCapture).Type == PieceType.King)
+        CapturePiece(pieceToCapture);
+    }
+
+    private void CapturePiece(GameObject pieceToCapture)
+    {
+        Vector2Int gridPoint = GridForPiece(pieceToCapture);
+        if (gridPoint.x < 0)
+        {
+            return;
+        }
+
+        Piece capturedPieceComponent = GetPieceComponent(pieceToCapture);
+        PieceColor capturedColor = GetPieceColor(pieceToCapture);
+
+        if (capturedPieceComponent.Type == PieceType.King)
         {
             EndGame(currentPlayer.name + " wins!");
         }
         currentPlayer.capturedPieces.Add(pieceToCapture);
-        otherPlayer.pieces.Remove(pieceToCapture);
+        if (pieceOwners.TryGetValue(pieceToCapture, out Player owner))
+        {
+            owner.pieces.Remove(pieceToCapture);
+        }
         pieces[gridPoint.x, gridPoint.y] = null;
         movedPawns.Remove(pieceToCapture);
+        UpdateCaptureState(capturedPieceComponent.Type, capturedColor, gridPoint);
         piecePositions.Remove(pieceToCapture);
         pieceComponentCache.Remove(pieceToCapture);
         pieceColors.Remove(pieceToCapture);
+        pieceOwners.Remove(pieceToCapture);
         Destroy(pieceToCapture);
     }
 
@@ -237,6 +397,7 @@ public class GameManager : MonoBehaviour
         Player tempPlayer = currentPlayer;
         currentPlayer = otherPlayer;
         otherPlayer = tempPlayer;
+        EvaluateTurnState();
     }
 
     public PieceType GetPieceType(GameObject piece)
@@ -246,7 +407,13 @@ public class GameManager : MonoBehaviour
 
     public PieceColor GetPieceColor(GameObject piece)
     {
-        return pieceColors[piece];
+        if (piece != null && pieceColors.TryGetValue(piece, out PieceColor color))
+        {
+            return color;
+        }
+
+        Debug.LogWarning("Requested PieceColor for an untracked piece.", piece);
+        return PieceColor.White;
     }
 
     public void EndGame(string message)
@@ -262,14 +429,46 @@ public class GameManager : MonoBehaviour
         var moveSelector = board.GetComponent<MoveSelector>();
         if (moveSelector != null)
         {
-            moveSelector.enabled = false;
+            moveSelector.AllowHumanInput = false;
         }
 
-        var aiController = board.GetComponent<AIController>();
-        if (aiController != null)
+        foreach (var aiController in board.GetComponents<AIController>())
         {
             aiController.enabled = false;
         }
+    }
+
+    private bool ValidateConfiguration()
+    {
+        bool valid = true;
+
+        if (board == null)
+        {
+            Debug.LogError("GameManager is missing its Board reference.", this);
+            valid = false;
+        }
+
+        if (piecePrefab == null)
+        {
+            Debug.LogError("GameManager is missing its piece prefab reference.", this);
+            valid = false;
+        }
+        else if (piecePrefab.GetComponent<SpriteRenderer>() == null)
+        {
+            Debug.LogError("GameManager piece prefab needs a SpriteRenderer.", piecePrefab);
+            valid = false;
+        }
+
+        if (whiteKingSprite == null || whiteQueenSprite == null || whiteBishopSprite == null ||
+            whiteKnightSprite == null || whiteRookSprite == null || whitePawnSprite == null ||
+            blackKingSprite == null || blackQueenSprite == null || blackBishopSprite == null ||
+            blackKnightSprite == null || blackRookSprite == null || blackPawnSprite == null)
+        {
+            Debug.LogError("GameManager needs all twelve piece sprites assigned.", this);
+            valid = false;
+        }
+
+        return valid;
     }
 
     private Piece GetPieceComponent(GameObject piece)
@@ -326,5 +525,178 @@ public class GameManager : MonoBehaviour
             }
         }
         return null;
+    }
+
+    public Sprite SpriteForPiece(PieceType type, PieceColor color)
+    {
+        return GetSpriteForPiece(type, color);
+    }
+
+    private void UpdateMoveState(GameObject piece, PieceType type, Vector2Int from)
+    {
+        PieceColor color = GetPieceColor(piece);
+
+        if (type == PieceType.King)
+        {
+            if (color == PieceColor.White)
+            {
+                WhiteKingMoved = true;
+            }
+            else
+            {
+                BlackKingMoved = true;
+            }
+            return;
+        }
+
+        if (type != PieceType.Rook)
+        {
+            return;
+        }
+
+        MarkRookMoved(color, from);
+    }
+
+    private void UpdateCaptureState(PieceType capturedType, PieceColor capturedColor, Vector2Int at)
+    {
+        if (capturedType != PieceType.Rook)
+        {
+            return;
+        }
+
+        MarkRookMoved(capturedColor, at);
+    }
+
+    private void MarkRookMoved(PieceColor color, Vector2Int position)
+    {
+        if (color == PieceColor.White)
+        {
+            if (position.x == 0 && position.y == 0) WhiteQueensideRookMoved = true;
+            if (position.x == 7 && position.y == 0) WhiteKingsideRookMoved = true;
+            return;
+        }
+
+        if (position.x == 0 && position.y == 7) BlackQueensideRookMoved = true;
+        if (position.x == 7 && position.y == 7) BlackKingsideRookMoved = true;
+    }
+
+    private void PromotePiece(GameObject piece, PieceType type)
+    {
+        Piece pieceComponent = GetPieceComponent(piece);
+        pieceComponent.Type = type;
+
+        SpriteRenderer spriteRenderer = piece.GetComponent<SpriteRenderer>();
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.sprite = GetSpriteForPiece(type, GetPieceColor(piece));
+        }
+    }
+
+    private void EvaluateTurnState()
+    {
+        if (IsGameOver)
+        {
+            return;
+        }
+
+        BoardState state = BoardState.boardSnapshot();
+        List<ChessMove> legalMoves = MoveGenerator.getLegalMoves(state, CurrentTurnColor);
+        if (legalMoves.Count == 0)
+        {
+            if (MoveGenerator.isInCheck(state, CurrentTurnColor))
+            {
+                EndGame(otherPlayer.name + " wins by checkmate.");
+            }
+            else
+            {
+                EndGame("Draw by stalemate.");
+            }
+
+            return;
+        }
+
+        if (HasInsufficientMaterial(state))
+        {
+            EndGame("Draw by insufficient material.");
+        }
+    }
+
+    private bool HasInsufficientMaterial(BoardState state)
+    {
+        int whiteKnights = 0;
+        int blackKnights = 0;
+        var whiteBishopSquareColors = new List<bool>(2);
+        var blackBishopSquareColors = new List<bool>(2);
+
+        for (int col = 0; col < 8; col++)
+        {
+            for (int row = 0; row < 8; row++)
+            {
+                BoardState.BoardPiece? piece = state.board[col, row];
+                if (!piece.HasValue)
+                {
+                    continue;
+                }
+
+                switch (piece.Value.type)
+                {
+                    case PieceType.King:
+                        continue;
+                    case PieceType.Bishop:
+                        if (piece.Value.color == PieceColor.White)
+                        {
+                            whiteBishopSquareColors.Add(IsLightSquare(col, row));
+                        }
+                        else
+                        {
+                            blackBishopSquareColors.Add(IsLightSquare(col, row));
+                        }
+                        break;
+                    case PieceType.Knight:
+                        if (piece.Value.color == PieceColor.White)
+                        {
+                            whiteKnights++;
+                        }
+                        else
+                        {
+                            blackKnights++;
+                        }
+                        break;
+                    default:
+                        return false;
+                }
+            }
+        }
+
+        int whiteMinorCount = whiteKnights + whiteBishopSquareColors.Count;
+        int blackMinorCount = blackKnights + blackBishopSquareColors.Count;
+
+        if (whiteMinorCount == 0 && blackMinorCount == 0)
+        {
+            return true;
+        }
+
+        if (whiteMinorCount == 1 && blackMinorCount == 0)
+        {
+            return true;
+        }
+
+        if (whiteMinorCount == 0 && blackMinorCount == 1)
+        {
+            return true;
+        }
+
+        if (whiteKnights == 0 && blackKnights == 0 &&
+            whiteBishopSquareColors.Count == 1 && blackBishopSquareColors.Count == 1)
+        {
+            return whiteBishopSquareColors[0] == blackBishopSquareColors[0];
+        }
+
+        return false;
+    }
+
+    private static bool IsLightSquare(int col, int row)
+    {
+        return (col + row) % 2 != 0;
     }
 }

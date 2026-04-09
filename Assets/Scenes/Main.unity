@@ -234,11 +234,13 @@ GameObject:
   m_Component:
   - component: {fileID: 516697439}
   - component: {fileID: 516697440}
-  - component: {fileID: 516697441}
   - component: {fileID: 516697442}
   - component: {fileID: 516697444}
+  - component: {fileID: 516697445}
+  - component: {fileID: 516697446}
+  - component: {fileID: 516697447}
   m_Layer: 0
-  m_Name: GameManager
+  m_Name: BoardRoot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -256,7 +258,7 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &516697440
@@ -278,38 +280,10 @@ MonoBehaviour:
   frameColor: {r: 0.18, g: 0.13, b: 0.09, a: 0.96}
   lightCoordinateColor: {r: 0.71, g: 0.53, b: 0.39, a: 1}
   darkCoordinateColor: {r: 0.94, g: 0.85, b: 0.71, a: 1}
---- !u!114 &516697441
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 516697437}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0467ea60d08c74bf09df7bda660533e7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  board: {fileID: 516697442}
-  piecePrefab: {fileID: 3774768026620902778, guid: e17d01075bdd64b3c898395ebc5b048f,
-    type: 3}
-  whiteKingSprite: {fileID: 153240639, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
-  whiteQueenSprite: {fileID: 2091564365, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
-  whiteBishopSprite: {fileID: 1245377925, guid: d99b68864fc1248aabc5b1d3067ac07e,
-    type: 3}
-  whiteKnightSprite: {fileID: -253817895, guid: d99b68864fc1248aabc5b1d3067ac07e,
-    type: 3}
-  whiteRookSprite: {fileID: -519064294, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
-  whitePawnSprite: {fileID: 866698258, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
-  blackKingSprite: {fileID: 41763246, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
-  blackQueenSprite: {fileID: -1757567351, guid: d99b68864fc1248aabc5b1d3067ac07e,
-    type: 3}
-  blackBishopSprite: {fileID: 1921515466, guid: d99b68864fc1248aabc5b1d3067ac07e,
-    type: 3}
-  blackKnightSprite: {fileID: -1210744821, guid: d99b68864fc1248aabc5b1d3067ac07e,
-    type: 3}
-  blackRookSprite: {fileID: 908599678, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
-  blackPawnSprite: {fileID: -5830143, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
+  coordinateShadowColor: {r: 0.11, g: 0.08, b: 0.05, a: 0.55}
+  coordinateScaleRatio: 0.085
+  fileLabelOffset: {x: 0.35, y: -0.34}
+  rankLabelOffset: {x: -0.35, y: 0.34}
 --- !u!114 &516697442
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -337,6 +311,142 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 69ccfe8c654294ec3a7a7cc1369e8c91, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  allowHumanInput: 1
+--- !u!114 &516697445
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 516697437}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a66427f08b37f12d0a62f2a96ac21c3f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  aiStartColorBlack: 0
+  moveDelay: 0.05
+  aiPickupDuration: 0.012
+  aiPickupLiftRatio: 0.18
+  engineProfile: {fileID: 0}
+  fallbackSettings:
+    profileName: Baseline
+    searchDepth: 6
+    maxThinkTimeSeconds: 0.5
+    logSearchStats: 1
+    evaluationWeights:
+      materialWeight: 100
+      pieceSquareWeight: 100
+      mobilityWeight: 0
+--- !u!114 &516697446
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 516697437}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a66427f08b37f12d0a62f2a96ac21c3f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  aiStartColorBlack: 1
+  moveDelay: 0.05
+  aiPickupDuration: 0.012
+  aiPickupLiftRatio: 0.18
+  engineProfile: {fileID: 0}
+  fallbackSettings:
+    profileName: Baseline
+    searchDepth: 6
+    maxThinkTimeSeconds: 0.5
+    logSearchStats: 1
+    evaluationWeights:
+      materialWeight: 100
+      pieceSquareWeight: 100
+      mobilityWeight: 0
+--- !u!114 &516697447
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 516697437}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7e8d9c0ab1c24f36a9b08bcae7c1d4f2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  matchMode: 0
+  humanSide: 0
+  gameManager: {fileID: 516697451}
+  board: {fileID: 516697442}
+  boardUI: {fileID: 516697440}
+  moveSelector: {fileID: 516697444}
+  autoConfigureInEditor: 1
+--- !u!1 &516697450
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 516697452}
+  - component: {fileID: 516697451}
+  m_Layer: 0
+  m_Name: GameManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &516697451
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 516697450}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0467ea60d08c74bf09df7bda660533e7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  board: {fileID: 516697442}
+  piecePrefab: {fileID: 3774768026620902778, guid: e17d01075bdd64b3c898395ebc5b048f,
+    type: 3}
+  whiteKingSprite: {fileID: 153240639, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
+  whiteQueenSprite: {fileID: 2091564365, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
+  whiteBishopSprite: {fileID: 1245377925, guid: d99b68864fc1248aabc5b1d3067ac07e,
+    type: 3}
+  whiteKnightSprite: {fileID: -253817895, guid: d99b68864fc1248aabc5b1d3067ac07e,
+    type: 3}
+  whiteRookSprite: {fileID: -519064294, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
+  whitePawnSprite: {fileID: 866698258, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
+  blackKingSprite: {fileID: 41763246, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
+  blackQueenSprite: {fileID: -1757567351, guid: d99b68864fc1248aabc5b1d3067ac07e,
+    type: 3}
+  blackBishopSprite: {fileID: 1921515466, guid: d99b68864fc1248aabc5b1d3067ac07e,
+    type: 3}
+  blackKnightSprite: {fileID: -1210744821, guid: d99b68864fc1248aabc5b1d3067ac07e,
+    type: 3}
+  blackRookSprite: {fileID: 908599678, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
+  blackPawnSprite: {fileID: -5830143, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
+--- !u!4 &516697452
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 516697450}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1400255781
 GameObject:
   m_ObjectHideFlags: 0
@@ -438,3 +548,4 @@ SceneRoots:
   - {fileID: 37326126}
   - {fileID: 1400255783}
   - {fileID: 516697439}
+  - {fileID: 516697452}
