@@ -1,6 +1,3 @@
-using System;
-using System.Numerics;
-using System.Runtime.Serialization;
 using UnityEngine;
 
 public class BoardState
@@ -69,28 +66,41 @@ public class BoardState
     }
 
     public void applyMove(Move move) {
-        var piece = board[move.from.x, move.from.y];
-        var capturedPiece = board[move.to.x, move.to.y];
+        // store moved piece
+        var piece = board[move.from];
+
+        // check if piece empty
+        if (PieceBits.isEmpty(piece))
+        {
+            return;
+        }
+
+        // store captured piece
+        var capturedPiece = board[move.to];
+
+        PieceColor color = PieceBits.GetColor(piece);
+        PieceType type = PieceBits.GetType(piece);
 
         enPassantTarget = -1;
 
-        if (piece.HasValue && move.isEnPassant)
+        // move application for en passant
+        if (move.isEnPassant)
         {
-            int capturedPawnRow = move.to.y + (piece.Value.color == PieceColor.White ? -1 : 1);
-            capturedPiece = board[move.to.x, capturedPawnRow];
-            board[move.to.x, capturedPawnRow] = null;
+            int capturedPawnSquare = move.to + (color == PieceColor.White ? -8 : 8);
+            capturedPiece = board[capturedPawnSquare];
+            board[capturedPawnSquare] = PieceBits.None;
         }
 
-        board[move.to.x, move.to.y] = piece;
-        board[move.from.x, move.from.y] = null;
+        board[move.to] = piece;
+        board[move.from] = PieceBits.None;
 
-        if(piece == null) return;
-
-        UpdateCastlingState(piece.Value, move.from, capturedPiece, move.to);
+        UpdateCastlingState(piece, move.from, capturedPiece, move.to);
 
         if (move.isCastling)
         {
-            var rook = board[move.rookFrom.x, move.rookFrom.y];
+            int rookFrom = 
+
+            var rook = board[move.rookFrom];
             board[move.rookTo.x, move.rookTo.y] = rook;
             board[move.rookFrom.x, move.rookFrom.y] = null;
         }
@@ -216,7 +226,7 @@ public class BoardState
         return encoded;
     }
 
-    private void UpdateCastlingState(BoardPiece movingPiece, Vector2Int from, BoardPiece? capturedPiece, Vector2Int capturePosition)
+    private void UpdateCastlingState(int movingPiece, int from, int capturedPiece, int capturePosition)
     {
         if (movingPiece.type == PieceType.King)
         {
