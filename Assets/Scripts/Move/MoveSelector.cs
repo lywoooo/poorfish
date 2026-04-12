@@ -11,7 +11,7 @@ public class MoveSelector : MonoBehaviour
     private const float CaptureOverlayInsetRatio = 0.08f;
     private const float CaptureRingThicknessRatio = 0.12f;
     private const float DragThresholdPixels = 8f;
-    private const float DragPointerLift = 0.18f;
+    private const float DragPointerLift = 0f;
     private const int SelectedSquareSortingOrder = 1;
     private const int LastMoveSortingOrder = 1;
     private const int MoveIndicatorSortingOrder = 4;
@@ -29,9 +29,11 @@ public class MoveSelector : MonoBehaviour
     private Vector2Int? lastMoveToGridPoint;
     private GameObject movingPiece;
     private GameObject dragCandidatePiece;
+    private List<Move> selectedPieceLegalMoves;
     private List<Vector2Int> moveLocations;
     private HashSet<Vector2Int> moveLocationLookup;
     private List<GameObject> locationHighlights;
+    private readonly List<GameObject> pooledMoveIndicators = new List<GameObject>(32);
     private Camera cachedCamera;
     private GameManager cachedGameManager;
     [SerializeField] private bool allowHumanInput = true;
@@ -42,7 +44,7 @@ public class MoveSelector : MonoBehaviour
     private Vector2 dragStartMousePosition;
     private bool visualsInitialized;
     private bool awaitingPromotionChoice;
-    private List<ChessMove> pendingPromotionMoves;
+    private List<Move> pendingPromotionMoves;
     private Vector2Int pendingPromotionGridPoint;
     private readonly Dictionary<Vector2Int, PieceType> promotionOptionLookup = new Dictionary<Vector2Int, PieceType>(4);
     private readonly List<GameObject> promotionOptionObjects = new List<GameObject>(5);
@@ -125,17 +127,18 @@ public class MoveSelector : MonoBehaviour
         Vector2Int gridPoint = default;
         bool hasGridPoint = hasCursorWorldPoint && Geometry.TryGridFromPoint(cursorWorldPoint, out gridPoint);
 
+        bool consumedPointerDown = false;
         if (Input.GetMouseButtonDown(0))
         {
-            HandlePointerDown(hasGridPoint, gridPoint);
+            consumedPointerDown = HandlePointerDown(hasGridPoint, gridPoint);
         }
 
-        if (Input.GetMouseButton(0))
+        if (!consumedPointerDown && Input.GetMouseButton(0))
         {
             HandlePointerHeld(hasCursorWorldPoint, cursorWorldPoint);
         }
 
-        if (Input.GetMouseButtonUp(0))
+        if (!consumedPointerDown && Input.GetMouseButtonUp(0))
         {
             HandlePointerUp(hasGridPoint, gridPoint);
         }
@@ -209,7 +212,7 @@ public class MoveSelector : MonoBehaviour
         return true;
     }
 
-    private void HandlePointerDown(bool hasGridPoint, Vector2Int gridPoint)
+    private bool HandlePointerDown(bool hasGridPoint, Vector2Int gridPoint)
     {
         if (!hasGridPoint)
         {
@@ -217,7 +220,7 @@ public class MoveSelector : MonoBehaviour
             {
                 clearSelectionOnPointerUp = true;
             }
-            return;
+            return false;
         }
 
         GameObject pieceAtGrid = cachedGameManager.PieceAtGrid(gridPoint);
@@ -229,23 +232,24 @@ public class MoveSelector : MonoBehaviour
                 SelectPiece(pieceAtGrid);
                 PrepareDragCandidate(pieceAtGrid);
             }
-            return;
+            return false;
         }
 
         if (cachedGameManager.DoesPieceBelongToCurrentPlayer(pieceAtGrid))
         {
             SelectPiece(pieceAtGrid);
             PrepareDragCandidate(pieceAtGrid);
-            return;
+            return false;
         }
 
         if (moveLocationLookup != null && moveLocationLookup.Contains(gridPoint))
         {
             ExecuteMove(gridPoint);
-            return;
+            return true;
         }
 
         clearSelectionOnPointerUp = true;
+        return false;
     }
 
     private void HandlePointerHeld(bool hasCursorWorldPoint, Vector3 cursorWorldPoint)
@@ -268,8 +272,7 @@ public class MoveSelector : MonoBehaviour
 
         if (hasCursorWorldPoint)
         {
-            Vector3 liftedPosition = cursorWorldPoint + Vector3.up * (Geometry.CellSize * DragPointerLift);
-            cachedGameManager.board.SetPieceWorldPosition(movingPiece, liftedPosition);
+            MoveDraggedPieceToCursor(cursorWorldPoint);
         }
     }
 
@@ -311,24 +314,27 @@ public class MoveSelector : MonoBehaviour
         dragStartWorldPosition = Geometry.PointFromGrid(dragStartGridPoint);
         ShowSelectedSquare(dragStartGridPoint);
 
-        moveLocations = cachedGameManager.MovesForPiece(movingPiece) ?? new List<Vector2Int>(0);
-        moveLocationLookup = new HashSet<Vector2Int>(moveLocations);
-        locationHighlights = new List<GameObject>(moveLocations.Count);
+        selectedPieceLegalMoves = cachedGameManager.LegalMovesForPiece(movingPiece) ?? new List<Move>(0);
+        moveLocations = new List<Vector2Int>(selectedPieceLegalMoves.Count);
+        moveLocationLookup = new HashSet<Vector2Int>(selectedPieceLegalMoves.Count);
+        locationHighlights = new List<GameObject>(selectedPieceLegalMoves.Count);
 
-        if (moveLocations.Count == 0)
+        if (selectedPieceLegalMoves.Count == 0)
         {
             ClearSelection();
             return;
         }
 
-        foreach (Vector2Int loc in moveLocations)
+        foreach (Move move in selectedPieceLegalMoves)
         {
-            bool isCapture = cachedGameManager.PieceAtGrid(loc) != null;
-            if (!isCapture && cachedGameManager.TryGetLegalMove(movingPiece, loc, out ChessMove move))
+            if (!moveLocationLookup.Add(move.to))
             {
-                isCapture = move.isEnPassant;
+                continue;
             }
-            GameObject highlight = CreateMoveIndicator(loc, isCapture);
+
+            moveLocations.Add(move.to);
+            bool isCapture = cachedGameManager.PieceAtGrid(move.to) != null || move.isEnPassant;
+            GameObject highlight = GetMoveIndicator(move.to, isCapture);
             if (highlight != null)
             {
                 locationHighlights.Add(highlight);
@@ -343,17 +349,15 @@ public class MoveSelector : MonoBehaviour
             return;
         }
 
-        Vector2Int startGridPoint = cachedGameManager.GridForPiece(movingPiece);
-
         if (isDraggingPiece)
         {
             cachedGameManager.board.SetPieceDragState(movingPiece, false);
             isDraggingPiece = false;
         }
 
-        List<ChessMove> candidateMoves = cachedGameManager.LegalMovesForPiece(movingPiece);
-        List<ChessMove> matchingMoves = new List<ChessMove>();
-        foreach (ChessMove candidateMove in candidateMoves)
+        List<Move> candidateMoves = selectedPieceLegalMoves ?? cachedGameManager.LegalMovesForPiece(movingPiece);
+        List<Move> matchingMoves = new List<Move>();
+        foreach (Move candidateMove in candidateMoves)
         {
             if (candidateMove.to == gridPoint)
             {
@@ -368,7 +372,7 @@ public class MoveSelector : MonoBehaviour
             return;
         }
 
-        ChessMove move = matchingMoves[0];
+        Move move = matchingMoves[0];
         if (matchingMoves.Count > 1 && matchingMoves[0].promotionType != PieceType.None)
         {
             BeginPromotionChoice(matchingMoves);
@@ -421,7 +425,8 @@ public class MoveSelector : MonoBehaviour
             {
                 if (highlight != null)
                 {
-                    Destroy(highlight);
+                    highlight.SetActive(false);
+                    pooledMoveIndicators.Add(highlight);
                 }
             }
 
@@ -429,6 +434,8 @@ public class MoveSelector : MonoBehaviour
         }
 
         moveLocations?.Clear();
+        selectedPieceLegalMoves?.Clear();
+        selectedPieceLegalMoves = null;
         moveLocationLookup?.Clear();
         moveLocationLookup = null;
     }
@@ -458,24 +465,39 @@ public class MoveSelector : MonoBehaviour
             : CreateMoveDot(gridPoint);
     }
 
+    private GameObject GetMoveIndicator(Vector2Int gridPoint, bool isCapture)
+    {
+        GameObject indicator = null;
+        if (pooledMoveIndicators.Count > 0)
+        {
+            int lastIndex = pooledMoveIndicators.Count - 1;
+            indicator = pooledMoveIndicators[lastIndex];
+            pooledMoveIndicators.RemoveAt(lastIndex);
+        }
+
+        if (indicator == null)
+        {
+            indicator = CreateMoveIndicator(gridPoint, isCapture);
+        }
+        else
+        {
+            ConfigureMoveIndicator(indicator, gridPoint, isCapture);
+            indicator.SetActive(true);
+        }
+
+        return indicator;
+    }
+
     private GameObject CreateCaptureOverlay(Vector2Int gridPoint)
     {
         GameObject overlay = new GameObject($"CaptureOverlay_{gridPoint.x}_{gridPoint.y}");
         overlay.transform.SetParent(transform, false);
-        overlay.transform.position = Geometry.PointFromGrid(gridPoint);
-
-        SpriteRenderer spriteRenderer = overlay.AddComponent<SpriteRenderer>();
-        spriteRenderer.sprite = GetGeneratedRingSprite();
-        spriteRenderer.color = MoveDotColor;
-        spriteRenderer.sortingOrder = MoveIndicatorSortingOrder;
-
-        float ringSize = Geometry.CellSize * (1f - (CaptureOverlayInsetRatio * 2f));
-        overlay.transform.localScale = new Vector3(ringSize, ringSize, 1f);
-
+        overlay.AddComponent<SpriteRenderer>();
+        ConfigureMoveIndicator(overlay, gridPoint, true);
         return overlay;
     }
 
-    private void BeginPromotionChoice(List<ChessMove> promotionMoves)
+    private void BeginPromotionChoice(List<Move> promotionMoves)
     {
         awaitingPromotionChoice = true;
         pendingPromotionMoves = promotionMoves;
@@ -579,7 +601,7 @@ public class MoveSelector : MonoBehaviour
             return;
         }
 
-        foreach (ChessMove promotionMove in pendingPromotionMoves)
+        foreach (Move promotionMove in pendingPromotionMoves)
         {
             if (promotionMove.promotionType != promotionType)
             {
@@ -680,17 +702,36 @@ public class MoveSelector : MonoBehaviour
     {
         GameObject dot = new GameObject($"MoveDot_{gridPoint.x}_{gridPoint.y}");
         dot.transform.SetParent(transform, false);
-        dot.transform.position = Geometry.PointFromGrid(gridPoint);
+        dot.AddComponent<SpriteRenderer>();
+        ConfigureMoveIndicator(dot, gridPoint, false);
+        return dot;
+    }
 
-        SpriteRenderer spriteRenderer = dot.AddComponent<SpriteRenderer>();
-        spriteRenderer.sprite = GetGeneratedDotSprite();
+    private void ConfigureMoveIndicator(GameObject indicator, Vector2Int gridPoint, bool isCapture)
+    {
+        indicator.name = (isCapture ? "CaptureOverlay_" : "MoveDot_") + gridPoint.x + "_" + gridPoint.y;
+        indicator.transform.position = Geometry.PointFromGrid(gridPoint);
+
+        SpriteRenderer spriteRenderer = indicator.GetComponent<SpriteRenderer>();
+        if (spriteRenderer == null)
+        {
+            spriteRenderer = indicator.AddComponent<SpriteRenderer>();
+        }
+
+        spriteRenderer.sprite = isCapture ? GetGeneratedRingSprite() : GetGeneratedDotSprite();
         spriteRenderer.color = MoveDotColor;
         spriteRenderer.sortingOrder = MoveIndicatorSortingOrder;
 
-        float dotSize = Geometry.CellSize * MoveDotScale;
-        dot.transform.localScale = new Vector3(dotSize, dotSize, 1f);
-
-        return dot;
+        if (isCapture)
+        {
+            float ringSize = Geometry.CellSize * (1f - (CaptureOverlayInsetRatio * 2f));
+            indicator.transform.localScale = new Vector3(ringSize, ringSize, 1f);
+        }
+        else
+        {
+            float dotSize = Geometry.CellSize * MoveDotScale;
+            indicator.transform.localScale = new Vector3(dotSize, dotSize, 1f);
+        }
     }
 
     private GameObject CreateSquareOverlay(string objectName, Color color, int sortingOrder)
@@ -823,6 +864,27 @@ public class MoveSelector : MonoBehaviour
         isDraggingPiece = true;
         cachedGameManager.board.SetPieceDragState(movingPiece, true);
         ShowSelectedSquare(dragStartGridPoint);
+    }
+
+    private void BeginDragAtCursor(bool hasCursorWorldPoint, Vector3 cursorWorldPoint)
+    {
+        BeginDrag();
+
+        if (hasCursorWorldPoint)
+        {
+            MoveDraggedPieceToCursor(cursorWorldPoint);
+        }
+    }
+
+    private void MoveDraggedPieceToCursor(Vector3 cursorWorldPoint)
+    {
+        if (movingPiece == null)
+        {
+            return;
+        }
+
+        Vector3 liftedPosition = cursorWorldPoint + Vector3.up * (Geometry.CellSize * DragPointerLift);
+        cachedGameManager.board.SetPieceWorldPosition(movingPiece, liftedPosition);
     }
 
     private bool TryGetCursorWorldPoint(out Vector3 worldPoint)

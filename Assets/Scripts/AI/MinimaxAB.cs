@@ -7,11 +7,13 @@ public class MinimaxAB : ISearchEngine
     {
         public readonly int drawPenalty;
         public readonly int repetitionPenalty;
+        public readonly int immediateReversalPenalty;
 
         public SearchBias(int drawPenalty, int repetitionPenalty)
         {
             this.drawPenalty = Mathf.Max(0, drawPenalty);
             this.repetitionPenalty = Mathf.Max(0, repetitionPenalty);
+            immediateReversalPenalty = this.drawPenalty + (this.repetitionPenalty * 2);
         }
     }
 
@@ -64,17 +66,17 @@ public class MinimaxAB : ISearchEngine
             settings.evaluationWeights.repetitionPenalty);
         repetitionCounts.Clear();
 
-        ChessMove bestMove = legalMoves[0];
+        Move bestMove = legalMoves[0];
         int bestScore = evaluator.Evaluate(state);
         int completedDepth = 0;
 
         for (int depth = 1; depth <= settings.searchDepth; depth++)
         {
-            ChessMove depthBestMove = default;
+            Move depthBestMove = default;
             int depthBestScore = aiColor == PieceColor.Black ? POS_INF : NEG_INF;
             bool hasDepthMove = false;
 
-            foreach (ChessMove move in legalMoves)
+            foreach (Move move in legalMoves)
             {
                 var prospective = state.cloneBoard();
                 prospective.applyMove(move);
@@ -85,6 +87,8 @@ public class MinimaxAB : ISearchEngine
                 {
                     break;
                 }
+
+                score = ApplyImmediateReversalPenalty(state, move, score);
 
                 bool scoreIsBetter = aiColor == PieceColor.Black ? score < depthBestScore : score > depthBestScore;
                 if (scoreIsBetter || !hasDepthMove)
@@ -232,6 +236,8 @@ public class MinimaxAB : ISearchEngine
                         return 0;
                     }
 
+                    eval = ApplyImmediateReversalPenalty(state, move, eval);
+
                     if (eval > bestScore)
                     {
                         bestScore = eval;
@@ -260,6 +266,8 @@ public class MinimaxAB : ISearchEngine
                     {
                         return 0;
                     }
+
+                    eval = ApplyImmediateReversalPenalty(state, move, eval);
 
                     if (eval < bestScore)
                     {
@@ -324,6 +332,41 @@ public class MinimaxAB : ISearchEngine
     {
         int scaledPenalty = searchBias.drawPenalty + (searchBias.repetitionPenalty * (priorVisits + 1));
         return SignedPenaltyForSideToMove(sideToMove, scaledPenalty);
+    }
+
+    private int ApplyImmediateReversalPenalty(BoardState state, Move move, int evaluation)
+    {
+        if (!IsImmediateReversal(state, move))
+        {
+            return evaluation;
+        }
+
+        return evaluation + SignedPenaltyAgainstMover(state.currentTurn, searchBias.immediateReversalPenalty);
+    }
+
+    private static bool IsImmediateReversal(BoardState state, Move move)
+    {
+        if (!state.hasLastMove)
+        {
+            return false;
+        }
+
+        Move previousMove = state.lastMove;
+        return move.from == previousMove.to
+            && move.to == previousMove.from
+            && move.promotionType == PieceType.None
+            && !move.isCastling
+            && !move.isEnPassant;
+    }
+
+    private static int SignedPenaltyAgainstMover(PieceColor mover, int penalty)
+    {
+        if (penalty <= 0)
+        {
+            return 0;
+        }
+
+        return mover == PieceColor.White ? -penalty : penalty;
     }
 
     private static int SignedPenaltyForSideToMove(PieceColor sideToMove, int penalty)

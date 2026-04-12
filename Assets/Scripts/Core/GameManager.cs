@@ -82,6 +82,8 @@ public class GameManager : MonoBehaviour
     public bool IsGameOver { get; private set; }
     public string LastGameResultMessage { get; private set; }
     public GameResultType LastGameResultType { get; private set; }
+    public bool HasLastAppliedMove { get; private set; }
+    public Move LastAppliedMove { get; private set; }
     public PieceColor CurrentTurnColor => currentPlayer == white ? PieceColor.White : PieceColor.Black;
     public string CurrentTurnName => currentPlayer != null ? currentPlayer.name : string.Empty;
     public bool WhiteKingMoved { get; private set; }
@@ -175,10 +177,10 @@ public class GameManager : MonoBehaviour
         }
 
         BoardState state = BoardState.boardSnapshot();
-        List<ChessMove> legalMoves = MoveGenerator.getLegalMoves(state, CurrentTurnColor);
+        List<Move> legalMoves = MoveGenerator.getLegalMoves(state, CurrentTurnColor);
         List<Vector2Int> locations = new List<Vector2Int>(legalMoves.Count);
 
-        foreach (ChessMove move in legalMoves)
+        foreach (Move move in legalMoves)
         {
             if (move.from == gridPoint)
             {
@@ -189,19 +191,19 @@ public class GameManager : MonoBehaviour
         return locations;
     }
 
-    public List<ChessMove> LegalMovesForPiece(GameObject pieceObject)
+    public List<Move> LegalMovesForPiece(GameObject pieceObject)
     {
         Vector2Int gridPoint = GridForPiece(pieceObject);
         if (gridPoint.x < 0)
         {
-            return new List<ChessMove>(0);
+            return new List<Move>(0);
         }
 
         BoardState state = BoardState.boardSnapshot();
-        List<ChessMove> legalMoves = MoveGenerator.getLegalMoves(state, CurrentTurnColor);
-        List<ChessMove> pieceMoves = new List<ChessMove>();
+        List<Move> legalMoves = MoveGenerator.getLegalMoves(state, CurrentTurnColor);
+        List<Move> pieceMoves = new List<Move>();
 
-        foreach (ChessMove move in legalMoves)
+        foreach (Move move in legalMoves)
         {
             if (move.from == gridPoint)
             {
@@ -212,7 +214,7 @@ public class GameManager : MonoBehaviour
         return pieceMoves;
     }
 
-    public bool TryGetLegalMove(GameObject pieceObject, Vector2Int destination, out ChessMove move)
+    public bool TryGetLegalMove(GameObject pieceObject, Vector2Int destination, out Move move)
     {
         move = default;
 
@@ -223,9 +225,9 @@ public class GameManager : MonoBehaviour
         }
 
         BoardState state = BoardState.boardSnapshot();
-        List<ChessMove> legalMoves = MoveGenerator.getLegalMoves(state, CurrentTurnColor);
+        List<Move> legalMoves = MoveGenerator.getLegalMoves(state, CurrentTurnColor);
 
-        foreach (ChessMove legalMove in legalMoves)
+        foreach (Move legalMove in legalMoves)
         {
             if (legalMove.from == gridPoint && legalMove.to == destination)
             {
@@ -237,7 +239,7 @@ public class GameManager : MonoBehaviour
         return false;
     }
 
-    public void ApplyMove(ChessMove move)
+    public void ApplyMove(Move move)
     {
         GameObject piece = PieceAtGrid(move.from);
         if (piece == null)
@@ -300,6 +302,8 @@ public class GameManager : MonoBehaviour
             }
         }
 
+        LastAppliedMove = move;
+        HasLastAppliedMove = true;
         MoveApplied?.Invoke(startGridPoint, destination);
     }
 
@@ -474,6 +478,8 @@ public class GameManager : MonoBehaviour
         BlackKingsideRookMoved = false;
         BlackQueensideRookMoved = false;
         EnPassantTarget = null;
+        HasLastAppliedMove = false;
+        LastAppliedMove = default;
 
         InitialSetup();
     }
@@ -670,7 +676,7 @@ public class GameManager : MonoBehaviour
         }
 
         BoardState state = BoardState.boardSnapshot();
-        List<ChessMove> legalMoves = MoveGenerator.getLegalMoves(state, CurrentTurnColor);
+        List<Move> legalMoves = MoveGenerator.getLegalMoves(state, CurrentTurnColor);
         if (legalMoves.Count == 0)
         {
             if (MoveGenerator.isInCheck(state, CurrentTurnColor))

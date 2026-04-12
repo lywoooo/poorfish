@@ -1,8 +1,6 @@
 using System;
 using UnityEngine;
 
-public enum PieceColor { White, Black }
-
 public class BoardState
 {
     private const ulong HashOffset = 1469598103934665603UL;
@@ -20,7 +18,7 @@ public class BoardState
 
     }
 
-    public BoardPiece?[,] board;
+    public int[] board;
     public PieceColor currentTurn;
     public bool whiteKingMoved;
     public bool whiteKingsideRookMoved;
@@ -29,9 +27,11 @@ public class BoardState
     public bool blackKingsideRookMoved;
     public bool blackQueensideRookMoved;
     public Vector2Int? enPassantTarget;
+    public bool hasLastMove;
+    public Move lastMove;
 
     public BoardState() {
-        board = new BoardPiece?[8, 8];
+        board = new int[64];
     }
 
     public static BoardState boardSnapshot() {
@@ -44,7 +44,7 @@ public class BoardState
 
                 if(pieceSnapshotted == null) continue;
 
-                state.board[col, row] = new BoardPiece(gm.GetPieceType(pieceSnapshotted), gm.GetPieceColor(pieceSnapshotted));
+                state.board[col + row] = new BoardPiece(gm.GetPieceType(pieceSnapshotted), gm.GetPieceColor(pieceSnapshotted));
             }
         }
 
@@ -56,6 +56,8 @@ public class BoardState
         state.blackKingsideRookMoved = gm.BlackKingsideRookMoved;
         state.blackQueensideRookMoved = gm.BlackQueensideRookMoved;
         state.enPassantTarget = gm.EnPassantTarget;
+        state.hasLastMove = gm.HasLastAppliedMove;
+        state.lastMove = gm.LastAppliedMove;
 
         return state;
     }
@@ -69,7 +71,9 @@ public class BoardState
             blackKingMoved = blackKingMoved,
             blackKingsideRookMoved = blackKingsideRookMoved,
             blackQueensideRookMoved = blackQueensideRookMoved,
-            enPassantTarget = enPassantTarget
+            enPassantTarget = enPassantTarget,
+            hasLastMove = hasLastMove,
+            lastMove = lastMove
         };
 
         for (int col = 0; col < 8; col++)
@@ -83,7 +87,7 @@ public class BoardState
         return clone;
     }
 
-    public void applyMove(ChessMove move) {
+    public void applyMove(Move move) {
         var piece = board[move.from.x, move.from.y];
         var capturedPiece = board[move.to.x, move.to.y];
 
@@ -125,6 +129,9 @@ public class BoardState
                 board[move.to.x, move.to.y] = new BoardPiece(promotionType, piece.Value.color);
             }
         }
+
+        lastMove = move;
+        hasLastMove = true;
     }
 
     public static bool InBounds(int col, int row)
@@ -198,7 +205,34 @@ public class BoardState
             hash *= HashPrime;
         }
 
+        if (hasLastMove)
+        {
+            hash ^= EncodeMove(lastMove) + 389UL;
+            hash *= HashPrime;
+        }
+
         return hash;
+    }
+
+    private static ulong EncodeMove(Move move)
+    {
+        ulong encoded = (ulong)(move.from.x & 7);
+        encoded |= (ulong)(move.from.y & 7) << 3;
+        encoded |= (ulong)(move.to.x & 7) << 6;
+        encoded |= (ulong)(move.to.y & 7) << 9;
+        encoded |= ((ulong)move.promotionType & 7UL) << 12;
+
+        if (move.isEnPassant)
+        {
+            encoded |= 1UL << 15;
+        }
+
+        if (move.isCastling)
+        {
+            encoded |= 1UL << 16;
+        }
+
+        return encoded;
     }
 
     private void UpdateCastlingState(BoardPiece movingPiece, Vector2Int from, BoardPiece? capturedPiece, Vector2Int capturePosition)

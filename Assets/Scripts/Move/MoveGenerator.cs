@@ -13,8 +13,8 @@ public static class MoveGenerator
         new Vector2Int(-1, -1), new Vector2Int(-1, 1)
     };
 
-    public static List<ChessMove> getLegalMoves(BoardState state, PieceColor color) {
-        var legalMoves = new List<ChessMove>(32);
+    public static List<Move> getLegalMoves(BoardState state, PieceColor color) {
+        var legalMoves = new List<Move>(32);
 
         foreach(var unfilteredMove in getUnfilteredMoves(state, color)) {
             var stateCheck = state.cloneBoard();
@@ -32,7 +32,7 @@ public static class MoveGenerator
         return legalMoves;
     }
 
-    private static int captureScore(BoardState state, ChessMove move) {
+    private static int captureScore(BoardState state, Move move) {
         BoardState.BoardPiece? victim = state.board[move.to.x, move.to.y];
         BoardState.BoardPiece? movingPiece = state.board[move.from.x, move.from.y];
 
@@ -102,8 +102,8 @@ public static class MoveGenerator
         return !isInCheck(state, color) && getLegalMoves(state, color).Count == 0;
     }
 
-    private static List<ChessMove> getUnfilteredMoves(BoardState state, PieceColor color) {
-        var unfilteredMoves = new List<ChessMove>(32);
+    private static List<Move> getUnfilteredMoves(BoardState state, PieceColor color) {
+        var unfilteredMoves = new List<Move>(32);
 
         for (int col = 0; col < 8; col++) {
             for (int row = 0; row < 8; row++) {
@@ -117,7 +117,7 @@ public static class MoveGenerator
         return unfilteredMoves;
     }
 
-    private static List<ChessMove> getMovesForPiece(BoardState state, Vector2Int initialPos, PieceType type, PieceColor color) {
+    private static List<Move> getMovesForPiece(BoardState state, Vector2Int initialPos, PieceType type, PieceColor color) {
         switch(type) {
             case PieceType.Bishop:
                 return bishopRookMoves(state, initialPos, color, bishopDirections);
@@ -140,12 +140,12 @@ public static class MoveGenerator
                 return pawnMoves(state, initialPos, color);
 
             default:
-                return new List<ChessMove>(0);
+                return new List<Move>(0);
         }
     }
 
-    private static List<ChessMove> bishopRookMoves(BoardState state, Vector2Int initialPos, PieceColor color, Vector2Int[] directions) {
-        var destinations = new List<ChessMove>();
+    private static List<Move> bishopRookMoves(BoardState state, Vector2Int initialPos, PieceColor color, Vector2Int[] directions) {
+        var destinations = new List<Move>();
         foreach (var direction in directions) {
             for(int i = 1; i < 8; i++) {
                 int col = initialPos.x + i * direction.x;
@@ -156,12 +156,12 @@ public static class MoveGenerator
                 var destination = state.board[col, row];
 
                 if(destination == null) {
-                    destinations.Add(new ChessMove(initialPos, new Vector2Int(col, row)));
+                    destinations.Add(new Move(initialPos, new Vector2Int(col, row)));
                 }
                 else {
                     if(destination.Value.color != color && destination.Value.type != PieceType.King)
                     {
-                        destinations.Add(new ChessMove(initialPos, new Vector2Int(col, row)));
+                        destinations.Add(new Move(initialPos, new Vector2Int(col, row)));
                     }
                     break;
                 }
@@ -171,8 +171,8 @@ public static class MoveGenerator
         return destinations;
     }
 
-    private static List<ChessMove> kingMoves(BoardState state, Vector2Int initialPos, PieceColor color) {
-        var destinations = new List<ChessMove>(10);
+    private static List<Move> kingMoves(BoardState state, Vector2Int initialPos, PieceColor color) {
+        var destinations = new List<Move>(10);
 
         foreach (var direction in bishopDirections) AddIfLegal(state, initialPos, color, initialPos.x + direction.x, initialPos.y + direction.y, destinations);
         foreach (var direction in rookDirections) AddIfLegal(state, initialPos, color, initialPos.x + direction.x, initialPos.y + direction.y, destinations);
@@ -184,15 +184,15 @@ public static class MoveGenerator
     private static readonly int[] knightXChange = { -1,  1,  2, -2,  2, -2,  1, -1 };
     private static readonly int[] knightYChange = {  2,  2,  1,  1, -1, -1, -2, -2 };
 
-    private static List<ChessMove> knightMoves(BoardState state, Vector2Int initialPos, PieceColor color) {
-        var destinations = new List<ChessMove>(8);
+    private static List<Move> knightMoves(BoardState state, Vector2Int initialPos, PieceColor color) {
+        var destinations = new List<Move>(8);
         for (int i = 0; i < 8; i++)
             AddIfLegal(state, initialPos, color, initialPos.x + knightXChange[i], initialPos.y + knightYChange[i], destinations);
         return destinations;
     }
 
-    private static List<ChessMove> pawnMoves(BoardState state, Vector2Int initialPos, PieceColor color) {
-        var destinations  = new List<ChessMove>(6);
+    private static List<Move> pawnMoves(BoardState state, Vector2Int initialPos, PieceColor color) {
+        var destinations  = new List<Move>(6);
         int forward  = color == PieceColor.White ? 1 : -1;
         int startRow = color == PieceColor.White ? 1 : 6;
         int promotionRow = color == PieceColor.White ? 7 : 0;
@@ -203,7 +203,7 @@ public static class MoveGenerator
 
             if (initialPos.y == startRow) {
                 int twoRow = initialPos.y + 2 * forward;
-                if (BoardState.InBounds(initialPos.x, twoRow) && state.board[initialPos.x, twoRow] == null) destinations.Add(new ChessMove(initialPos, new Vector2Int(initialPos.x, twoRow)));
+                if (BoardState.InBounds(initialPos.x, twoRow) && state.board[initialPos.x, twoRow] == null) destinations.Add(new Move(initialPos, new Vector2Int(initialPos.x, twoRow)));
             }
         }
 
@@ -238,7 +238,7 @@ public static class MoveGenerator
                     capturedPawn.Value.color != color &&
                     capturedPawn.Value.type == PieceType.Pawn)
                 {
-                    destinations.Add(new ChessMove(initialPos, state.enPassantTarget.Value, isEnPassant: true));
+                    destinations.Add(new Move(initialPos, state.enPassantTarget.Value, isEnPassant: true));
                 }
             }
         }
@@ -246,20 +246,20 @@ public static class MoveGenerator
         return destinations;
     }
 
-    private static void AddIfLegal(BoardState state, Vector2Int initialPos, PieceColor color, int col, int row, List<ChessMove> destinations) {
+    private static void AddIfLegal(BoardState state, Vector2Int initialPos, PieceColor color, int col, int row, List<Move> destinations) {
         if (!BoardState.InBounds(col, row)) return;
 
         var destination = state.board[col, row];
 
         if (!destination.HasValue)
         {
-            destinations.Add(new ChessMove(initialPos, new Vector2Int(col, row)));
+            destinations.Add(new Move(initialPos, new Vector2Int(col, row)));
             return;
         }
 
         if (destination.Value.color != color && destination.Value.type != PieceType.King)
         {
-            destinations.Add(new ChessMove(initialPos, new Vector2Int(col, row)));
+            destinations.Add(new Move(initialPos, new Vector2Int(col, row)));
         }
     }
 
@@ -303,7 +303,7 @@ public static class MoveGenerator
         return false;
     }
 
-    private static void AddCastlingMoves(BoardState state, Vector2Int kingPosition, PieceColor color, List<ChessMove> destinations)
+    private static void AddCastlingMoves(BoardState state, Vector2Int kingPosition, PieceColor color, List<Move> destinations)
     {
         bool kingMoved = color == PieceColor.White ? state.whiteKingMoved : state.blackKingMoved;
         if (kingMoved || isInCheck(state, color))
@@ -319,7 +319,7 @@ public static class MoveGenerator
         TryAddCastleMove(state, color, kingPosition, backRank, kingside: false, rookMoved: queensideRookMoved, destinations);
     }
 
-    private static void TryAddCastleMove(BoardState state, PieceColor color, Vector2Int kingPosition, int backRank, bool kingside, bool rookMoved, List<ChessMove> destinations)
+    private static void TryAddCastleMove(BoardState state, PieceColor color, Vector2Int kingPosition, int backRank, bool kingside, bool rookMoved, List<Move> destinations)
     {
         if (rookMoved)
         {
@@ -348,14 +348,14 @@ public static class MoveGenerator
         for (int col = kingPosition.x + step; col != kingTargetCol + step; col += step)
         {
             var intermediate = state.cloneBoard();
-            intermediate.applyMove(new ChessMove(kingPosition, new Vector2Int(col, backRank)));
+            intermediate.applyMove(new Move(kingPosition, new Vector2Int(col, backRank)));
             if (isInCheck(intermediate, color))
             {
                 return;
             }
         }
 
-        destinations.Add(new ChessMove(
+        destinations.Add(new Move(
             kingPosition,
             new Vector2Int(kingTargetCol, backRank),
             isCastling: true,
@@ -363,17 +363,17 @@ public static class MoveGenerator
             rookTo: new Vector2Int(rookTargetCol, backRank)));
     }
 
-    private static void AddPawnMove(List<ChessMove> destinations, Vector2Int from, Vector2Int to, bool isPromotion)
+    private static void AddPawnMove(List<Move> destinations, Vector2Int from, Vector2Int to, bool isPromotion)
     {
         if (isPromotion)
         {
-            destinations.Add(new ChessMove(from, to, promotionType: PieceType.Queen));
-            destinations.Add(new ChessMove(from, to, promotionType: PieceType.Rook));
-            destinations.Add(new ChessMove(from, to, promotionType: PieceType.Bishop));
-            destinations.Add(new ChessMove(from, to, promotionType: PieceType.Knight));
+            destinations.Add(new Move(from, to, promotionType: PieceType.Queen));
+            destinations.Add(new Move(from, to, promotionType: PieceType.Rook));
+            destinations.Add(new Move(from, to, promotionType: PieceType.Bishop));
+            destinations.Add(new Move(from, to, promotionType: PieceType.Knight));
             return;
         }
 
-        destinations.Add(new ChessMove(from, to));
+        destinations.Add(new Move(from, to));
     }
 }

@@ -52,7 +52,7 @@ public class AIVsAICsvRecorder : MonoBehaviour
         fileName = string.IsNullOrWhiteSpace(configuredFileName) ? "ai_vs_ai_matches.csv" : configuredFileName.Trim();
         targetCompletedGames = Mathf.Max(1, plannedGames);
         batchId = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
-        batchDirectoryPath = Path.Combine(Application.persistentDataPath, "SelfPlayLogs", batchId);
+        batchDirectoryPath = Path.Combine(GetProjectRootPath(), "SelfPlayLogs", batchId);
         currentGameNumber = 0;
         whiteWins = 0;
         blackWins = 0;
@@ -261,11 +261,16 @@ public class AIVsAICsvRecorder : MonoBehaviour
     private string GetBatchFilePath(string targetFileName)
     {
         string directoryPath = string.IsNullOrWhiteSpace(batchDirectoryPath)
-            ? Path.Combine(Application.persistentDataPath, "SelfPlayLogs", DateTime.UtcNow.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture))
+            ? Path.Combine(GetProjectRootPath(), "SelfPlayLogs", DateTime.UtcNow.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture))
             : batchDirectoryPath;
 
         Directory.CreateDirectory(directoryPath);
         return Path.Combine(directoryPath, targetFileName);
+    }
+
+    private static string GetProjectRootPath()
+    {
+        return Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
     }
 
     private static string ToSquareName(Vector2Int gridPoint)
