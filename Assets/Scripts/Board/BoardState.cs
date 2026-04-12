@@ -1,34 +1,22 @@
 using System;
+using System.Numerics;
+using System.Runtime.Serialization;
 using UnityEngine;
 
 public class BoardState
 {
+    // replace with zobrist hashing later
     private const ulong HashOffset = 1469598103934665603UL;
     private const ulong HashPrime = 1099511628211UL;
 
-    public struct BoardPiece {
-        public PieceType type;
-        public PieceColor color;
-
-        public BoardPiece(PieceType typeInputted, PieceColor colorInputted)
-        {
-            type = typeInputted;
-            color = colorInputted;
-        }
-
-    }
-
+    // public fields
     public int[] board;
     public PieceColor currentTurn;
-    public bool whiteKingMoved;
-    public bool whiteKingsideRookMoved;
-    public bool whiteQueensideRookMoved;
-    public bool blackKingMoved;
-    public bool blackKingsideRookMoved;
-    public bool blackQueensideRookMoved;
-    public Vector2Int? enPassantTarget;
+    public CastlingRights castlingRights;
+    public int enPassantTarget = -1;
+    public Move lastMove; 
     public bool hasLastMove;
-    public Move lastMove;
+
 
     public BoardState() {
         board = new int[64];
@@ -44,18 +32,16 @@ public class BoardState
 
                 if(pieceSnapshotted == null) continue;
 
-                state.board[col + row] = new BoardPiece(gm.GetPieceType(pieceSnapshotted), gm.GetPieceColor(pieceSnapshotted));
+                PieceType type = gm.GetPieceType(pieceSnapshotted);
+                PieceColor color = gm.GetPieceColor(pieceSnapshotted);
+
+                state.board[col + row * 8] = PieceBits.CreatePiece(type, color);
             }
         }
 
         state.currentTurn = gm.CurrentTurnColor;
-        state.whiteKingMoved = gm.WhiteKingMoved;
-        state.whiteKingsideRookMoved = gm.WhiteKingsideRookMoved;
-        state.whiteQueensideRookMoved = gm.WhiteQueensideRookMoved;
-        state.blackKingMoved = gm.BlackKingMoved;
-        state.blackKingsideRookMoved = gm.BlackKingsideRookMoved;
-        state.blackQueensideRookMoved = gm.BlackQueensideRookMoved;
-        state.enPassantTarget = gm.EnPassantTarget;
+        state.castlingRights = UpdateCastlingRights(gm);
+        state.enPassantTarget = SquareIndex(gm.EnPassantTarget);
         state.hasLastMove = gm.HasLastAppliedMove;
         state.lastMove = gm.LastAppliedMove;
 
@@ -65,12 +51,7 @@ public class BoardState
     public BoardState cloneBoard() {
         var clone = new BoardState {
             currentTurn = currentTurn,
-            whiteKingMoved = whiteKingMoved,
-            whiteKingsideRookMoved = whiteKingsideRookMoved,
-            whiteQueensideRookMoved = whiteQueensideRookMoved,
-            blackKingMoved = blackKingMoved,
-            blackKingsideRookMoved = blackKingsideRookMoved,
-            blackQueensideRookMoved = blackQueensideRookMoved,
+            castlingRights = castlingRights,
             enPassantTarget = enPassantTarget,
             hasLastMove = hasLastMove,
             lastMove = lastMove
@@ -80,7 +61,7 @@ public class BoardState
         {
             for (int row = 0; row < 8; row++)
             {
-                clone.board[col, row] = board[col, row];
+                clone.board[col + row * 8] = board[col + row * 8];
             }
         }
 
@@ -91,7 +72,7 @@ public class BoardState
         var piece = board[move.from.x, move.from.y];
         var capturedPiece = board[move.to.x, move.to.y];
 
-        enPassantTarget = null;
+        enPassantTarget = -1;
 
         if (piece.HasValue && move.isEnPassant)
         {
@@ -270,5 +251,41 @@ public class BoardState
 
         if (position.x == 0 && position.y == 7) blackQueensideRookMoved = true;
         if (position.x == 7 && position.y == 7) blackKingsideRookMoved = true;
+    }
+
+    private static CastlingRights UpdateCastlingRights(GameManager gm)
+    {
+        CastlingRights rights = CastlingRights.None;
+
+        if (!gm.WhiteKingMoved)
+        {
+            if (!gm.WhiteKingsideRookMoved)
+            {
+                rights |= CastlingRights.WhiteKingside;
+            }
+            if (!gm.WhiteQueensideRookMoved)
+            {
+                rights |= CastlingRights.WhiteQueenside;
+            }
+        }
+
+        if (!gm.BlackKingMoved)
+        {
+            if (!gm.BlackKingsideRookMoved)
+            {
+                rights |= CastlingRights.BlackKingside;
+            }
+            if (!gm.BlackQueensideRookMoved)
+            {
+                rights |= CastlingRights.BlackQueenside;
+            }
+        }
+
+        return rights;
+    }
+
+    private static int SquareIndex(Vector2Int? square)
+    {
+        return square.HasValue ? square.Value.x + square.Value.y * 8 : -1;
     }
 }

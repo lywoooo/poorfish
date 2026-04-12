@@ -10,14 +10,15 @@ public static class PieceBits
 
     public const int Black = 8;
 
-    public static int CreatePiece(int type, bool isBlack)
+    public static int CreatePiece(PieceType type, PieceColor color)
     {
-        if (type == None)
+        if (type == PieceType.None)
         {
             return None;
         }
 
-        return isBlack ? (type | Black) : type;
+        int piece = (int) type;
+        return color == PieceColor.Black ? piece | Black : piece;
     }
 
     public static PieceType getType(int piece)
