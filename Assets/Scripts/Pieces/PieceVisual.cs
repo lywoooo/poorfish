@@ -19,8 +19,14 @@ public class Piece : MonoBehaviour
     [SerializeField] private SpriteRenderer sr; 
 
     public int PieceCode { get; private set; }
-    public PieceType type => PieceBits.getType(PieceCode);
-    public PieceColor color => PieceBits.getColor(PieceCode);
+    public PieceType Type
+    {
+        get => PieceBits.GetType(PieceCode);
+        set => PieceCode = PieceBits.CreatePiece(value, color);
+    }
+    public PieceType type => Type;
+    public PieceColor color => PieceBits.GetColor(PieceCode);
+
     public void setPiece(int PieceCode, Sprite sprite)
     {
         this.PieceCode = PieceCode;

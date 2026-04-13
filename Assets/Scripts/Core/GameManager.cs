@@ -156,9 +156,7 @@ public class GameManager : MonoBehaviour
         GameObject pieceObject = board.AddPiece(piecePrefab, col, row);
         Piece pieceComponent = EnsurePieceComponent(pieceObject, type);
         PieceColor color = player == white ? PieceColor.White : PieceColor.Black;
-
-        SpriteRenderer sr = pieceObject.GetComponent<SpriteRenderer>();
-        sr.sprite = GetSpriteForPiece(pieceComponent.Type, color);
+        pieceComponent.setPiece(PieceBits.CreatePiece(type, color), GetSpriteForPiece(type, color));
 
         player.pieces.Add(pieceObject);
         pieces[col, row] = pieceObject;
@@ -182,9 +180,9 @@ public class GameManager : MonoBehaviour
 
         foreach (Move move in legalMoves)
         {
-            if (move.from == gridPoint)
+            if (move.from == BoardState.SquareIndex(gridPoint))
             {
-                locations.Add(move.to);
+                locations.Add(move.ToVector);
             }
         }
 
@@ -205,7 +203,7 @@ public class GameManager : MonoBehaviour
 
         foreach (Move move in legalMoves)
         {
-            if (move.from == gridPoint)
+            if (move.from == BoardState.SquareIndex(gridPoint))
             {
                 pieceMoves.Add(move);
             }
@@ -229,7 +227,8 @@ public class GameManager : MonoBehaviour
 
         foreach (Move legalMove in legalMoves)
         {
-            if (legalMove.from == gridPoint && legalMove.to == destination)
+            if (legalMove.from == BoardState.SquareIndex(gridPoint) &&
+                legalMove.to == BoardState.SquareIndex(destination))
             {
                 move = legalMove;
                 return true;
@@ -241,15 +240,15 @@ public class GameManager : MonoBehaviour
 
     public void ApplyMove(Move move)
     {
-        GameObject piece = PieceAtGrid(move.from);
+        Vector2Int startGridPoint = move.FromVector;
+        Vector2Int destination = move.ToVector;
+        GameObject piece = PieceAtGrid(startGridPoint);
         if (piece == null)
         {
             return;
         }
 
         Piece pieceComponent = GetPieceComponent(piece);
-        Vector2Int startGridPoint = move.from;
-        Vector2Int destination = move.to;
         GameObject capturedPiece = null;
         EnPassantTarget = null;
 
@@ -284,11 +283,18 @@ public class GameManager : MonoBehaviour
 
         if (move.isCastling)
         {
-            GameObject rook = PieceAtGrid(move.rookFrom);
+            Vector2Int rookFrom = destination.x > startGridPoint.x
+                ? new Vector2Int(7, startGridPoint.y)
+                : new Vector2Int(0, startGridPoint.y);
+            Vector2Int rookTo = destination.x > startGridPoint.x
+                ? new Vector2Int(5, startGridPoint.y)
+                : new Vector2Int(3, startGridPoint.y);
+
+            GameObject rook = PieceAtGrid(rookFrom);
             if (rook != null)
             {
-                Move(rook, move.rookTo);
-                UpdateMoveState(rook, PieceType.Rook, move.rookFrom);
+                Move(rook, rookTo);
+                UpdateMoveState(rook, PieceType.Rook, rookFrom);
             }
         }
 
@@ -386,6 +392,13 @@ public class GameManager : MonoBehaviour
             return null;
         }
         return pieces[gridPoint.x, gridPoint.y];
+    }
+
+    public GameObject PieceAtGrid(int square)
+    {
+        return square >= 0 && square < 64
+            ? PieceAtGrid(new Vector2Int(square % 8, square / 8))
+            : null;
     }
 
     public Vector2Int GridForPiece(GameObject piece)
@@ -659,13 +672,7 @@ public class GameManager : MonoBehaviour
     private void PromotePiece(GameObject piece, PieceType type)
     {
         Piece pieceComponent = GetPieceComponent(piece);
-        pieceComponent.Type = type;
-
-        SpriteRenderer spriteRenderer = piece.GetComponent<SpriteRenderer>();
-        if (spriteRenderer != null)
-        {
-            spriteRenderer.sprite = GetSpriteForPiece(type, GetPieceColor(piece));
-        }
+        pieceComponent.setPiece(PieceBits.CreatePiece(type, GetPieceColor(piece)), GetSpriteForPiece(type, GetPieceColor(piece)));
     }
 
     private void EvaluateTurnState()
@@ -709,18 +716,20 @@ public class GameManager : MonoBehaviour
         {
             for (int row = 0; row < 8; row++)
             {
-                BoardState.BoardPiece? piece = state.board[col, row];
-                if (!piece.HasValue)
+                int piece = state.whatIsAt(col, row);
+                if (PieceBits.isEmpty(piece))
                 {
                     continue;
                 }
 
-                switch (piece.Value.type)
+                PieceType type = PieceBits.GetType(piece);
+                PieceColor color = PieceBits.GetColor(piece);
+                switch (type)
                 {
                     case PieceType.King:
                         continue;
                     case PieceType.Bishop:
-                        if (piece.Value.color == PieceColor.White)
+                        if (color == PieceColor.White)
                         {
                             whiteBishopSquareColors.Add(IsLightSquare(col, row));
                         }
@@ -730,7 +739,7 @@ public class GameManager : MonoBehaviour
                         }
                         break;
                     case PieceType.Knight:
-                        if (piece.Value.color == PieceColor.White)
+                        if (color == PieceColor.White)
                         {
                             whiteKnights++;
                         }

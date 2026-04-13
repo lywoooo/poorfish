@@ -327,14 +327,15 @@ public class MoveSelector : MonoBehaviour
 
         foreach (Move move in selectedPieceLegalMoves)
         {
-            if (!moveLocationLookup.Add(move.to))
+            Vector2Int destination = move.ToVector;
+            if (!moveLocationLookup.Add(destination))
             {
                 continue;
             }
 
-            moveLocations.Add(move.to);
-            bool isCapture = cachedGameManager.PieceAtGrid(move.to) != null || move.isEnPassant;
-            GameObject highlight = GetMoveIndicator(move.to, isCapture);
+            moveLocations.Add(destination);
+            bool isCapture = cachedGameManager.PieceAtGrid(destination) != null || move.isEnPassant;
+            GameObject highlight = GetMoveIndicator(destination, isCapture);
             if (highlight != null)
             {
                 locationHighlights.Add(highlight);
@@ -357,9 +358,10 @@ public class MoveSelector : MonoBehaviour
 
         List<Move> candidateMoves = selectedPieceLegalMoves ?? cachedGameManager.LegalMovesForPiece(movingPiece);
         List<Move> matchingMoves = new List<Move>();
+        int destinationSquare = BoardState.SquareIndex(gridPoint);
         foreach (Move candidateMove in candidateMoves)
         {
-            if (candidateMove.to == gridPoint)
+            if (candidateMove.to == destinationSquare)
             {
                 matchingMoves.Add(candidateMove);
             }
@@ -501,7 +503,7 @@ public class MoveSelector : MonoBehaviour
     {
         awaitingPromotionChoice = true;
         pendingPromotionMoves = promotionMoves;
-        pendingPromotionGridPoint = promotionMoves[0].to;
+        pendingPromotionGridPoint = promotionMoves[0].ToVector;
         ShowPromotionPrompt();
     }
 

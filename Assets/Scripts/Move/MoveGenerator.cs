@@ -13,44 +13,50 @@ public static class MoveGenerator
         new Vector2Int(-1, -1), new Vector2Int(-1, 1)
     };
 
-    public static List<Move> getLegalMoves(BoardState state, PieceColor color) {
+    private static readonly int[] knightXChange = { -1,  1,  2, -2,  2, -2,  1, -1 };
+    private static readonly int[] knightYChange = {  2,  2,  1,  1, -1, -1, -2, -2 };
+
+    public static List<Move> getLegalMoves(BoardState state, PieceColor color)
+    {
         var legalMoves = new List<Move>(32);
 
-        foreach(var unfilteredMove in getUnfilteredMoves(state, color)) {
+        foreach (var unfilteredMove in getUnfilteredMoves(state, color))
+        {
             var stateCheck = state.cloneBoard();
             stateCheck.applyMove(unfilteredMove);
 
-            if(!isInCheck(stateCheck, color)) legalMoves.Add(unfilteredMove);
+            if (!isInCheck(stateCheck, color))
+            {
+                legalMoves.Add(unfilteredMove);
+            }
         }
 
-        legalMoves.Sort((a, b) => {
-            int scoreA = captureScore(state, a);
-            int scoreB = captureScore(state, b);
-            return scoreB.CompareTo(scoreA);
-        });
-
+        legalMoves.Sort((a, b) => captureScore(state, b).CompareTo(captureScore(state, a)));
         return legalMoves;
     }
 
-    private static int captureScore(BoardState state, Move move) {
-        BoardState.BoardPiece? victim = state.board[move.to.x, move.to.y];
-        BoardState.BoardPiece? movingPiece = state.board[move.from.x, move.from.y];
+    private static int captureScore(BoardState state, Move move)
+    {
+        int movingPiece = state.board[move.from];
+        int victim = state.board[move.to];
 
-        if (move.isEnPassant && movingPiece.HasValue)
+        if (move.isEnPassant && !PieceBits.isEmpty(movingPiece))
         {
-            int capturedPawnRow = move.to.y + (movingPiece.Value.color == PieceColor.White ? -1 : 1);
-            victim = state.board[move.to.x, capturedPawnRow];
+            int capturedPawnSquare = move.to + (PieceBits.GetColor(movingPiece) == PieceColor.White ? -8 : 8);
+            victim = state.board[capturedPawnSquare];
         }
 
-        if (!victim.HasValue) return 0;
-
-        return Evaluator.GetMaterialValue(victim.Value.type);
+        return PieceBits.isEmpty(victim) ? 0 : Evaluator.GetMaterialValue(PieceBits.GetType(victim));
     }
 
-    public static bool isInCheck(BoardState state, PieceColor color) {
+    public static bool isInCheck(BoardState state, PieceColor color)
+    {
         var kingPos = state.findKing(color);
 
-        if(kingPos.x == -1) return true;
+        if (kingPos.x == -1)
+        {
+            return true;
+        }
 
         var opponentColor = state.opponent(color);
         int pawnAttackRow = kingPos.y + (opponentColor == PieceColor.White ? -1 : 1);
@@ -94,172 +100,207 @@ public static class MoveGenerator
         return false;
     }
 
-    public static bool isCheckmate(BoardState state, PieceColor color) {
+    public static bool isCheckmate(BoardState state, PieceColor color)
+    {
         return isInCheck(state, color) && getLegalMoves(state, color).Count == 0;
     }
 
-    public static bool isStalemate(BoardState state, PieceColor color) {
+    public static bool isStalemate(BoardState state, PieceColor color)
+    {
         return !isInCheck(state, color) && getLegalMoves(state, color).Count == 0;
     }
 
-    private static List<Move> getUnfilteredMoves(BoardState state, PieceColor color) {
+    private static List<Move> getUnfilteredMoves(BoardState state, PieceColor color)
+    {
         var unfilteredMoves = new List<Move>(32);
 
-        for (int col = 0; col < 8; col++) {
-            for (int row = 0; row < 8; row++) {
-                var currentTile = state.board[col, row];
-                if (!currentTile.HasValue || currentTile.Value.color != color) continue;
-
-                var initialPos = new Vector2Int(col, row);
-                unfilteredMoves.AddRange(getMovesForPiece(state, initialPos, currentTile.Value.type, currentTile.Value.color));
+        for (int square = 0; square < state.board.Length; square++)
+        {
+            int currentTile = state.board[square];
+            if (PieceBits.isEmpty(currentTile) || PieceBits.GetColor(currentTile) != color)
+            {
+                continue;
             }
+
+            var initialPos = new Vector2Int(square % 8, square / 8);
+            unfilteredMoves.AddRange(getMovesForPiece(state, initialPos, PieceBits.GetType(currentTile), color));
         }
+
         return unfilteredMoves;
     }
 
-    private static List<Move> getMovesForPiece(BoardState state, Vector2Int initialPos, PieceType type, PieceColor color) {
-        switch(type) {
+    private static List<Move> getMovesForPiece(BoardState state, Vector2Int initialPos, PieceType type, PieceColor color)
+    {
+        switch (type)
+        {
             case PieceType.Bishop:
                 return bishopRookMoves(state, initialPos, color, bishopDirections);
-
             case PieceType.Rook:
                 return bishopRookMoves(state, initialPos, color, rookDirections);
-
             case PieceType.Queen:
                 var queenMoves = bishopRookMoves(state, initialPos, color, bishopDirections);
                 queenMoves.AddRange(bishopRookMoves(state, initialPos, color, rookDirections));
                 return queenMoves;
-
             case PieceType.King:
                 return kingMoves(state, initialPos, color);
-
             case PieceType.Knight:
                 return knightMoves(state, initialPos, color);
-
             case PieceType.Pawn:
                 return pawnMoves(state, initialPos, color);
-
             default:
                 return new List<Move>(0);
         }
     }
 
-    private static List<Move> bishopRookMoves(BoardState state, Vector2Int initialPos, PieceColor color, Vector2Int[] directions) {
+    private static List<Move> bishopRookMoves(BoardState state, Vector2Int initialPos, PieceColor color, Vector2Int[] directions)
+    {
         var destinations = new List<Move>();
-        foreach (var direction in directions) {
-            for(int i = 1; i < 8; i++) {
+
+        foreach (var direction in directions)
+        {
+            for (int i = 1; i < 8; i++)
+            {
                 int col = initialPos.x + i * direction.x;
                 int row = initialPos.y + i * direction.y;
 
-                if(!BoardState.InBounds(col, row)) break;
-
-                var destination = state.board[col, row];
-
-                if(destination == null) {
-                    destinations.Add(new Move(initialPos, new Vector2Int(col, row)));
-                }
-                else {
-                    if(destination.Value.color != color && destination.Value.type != PieceType.King)
-                    {
-                        destinations.Add(new Move(initialPos, new Vector2Int(col, row)));
-                    }
+                if (!BoardState.InBounds(col, row))
+                {
                     break;
                 }
+
+                int destination = state.whatIsAt(col, row);
+                if (PieceBits.isEmpty(destination))
+                {
+                    destinations.Add(new Move(initialPos, new Vector2Int(col, row)));
+                    continue;
+                }
+
+                if (PieceBits.GetColor(destination) != color && PieceBits.GetType(destination) != PieceType.King)
+                {
+                    destinations.Add(new Move(initialPos, new Vector2Int(col, row), MoveFlags.Capture));
+                }
+
+                break;
             }
         }
 
         return destinations;
     }
 
-    private static List<Move> kingMoves(BoardState state, Vector2Int initialPos, PieceColor color) {
+    private static List<Move> kingMoves(BoardState state, Vector2Int initialPos, PieceColor color)
+    {
         var destinations = new List<Move>(10);
 
-        foreach (var direction in bishopDirections) AddIfLegal(state, initialPos, color, initialPos.x + direction.x, initialPos.y + direction.y, destinations);
-        foreach (var direction in rookDirections) AddIfLegal(state, initialPos, color, initialPos.x + direction.x, initialPos.y + direction.y, destinations);
+        foreach (var direction in bishopDirections)
+        {
+            AddIfLegal(state, initialPos, color, initialPos.x + direction.x, initialPos.y + direction.y, destinations);
+        }
+
+        foreach (var direction in rookDirections)
+        {
+            AddIfLegal(state, initialPos, color, initialPos.x + direction.x, initialPos.y + direction.y, destinations);
+        }
+
         AddCastlingMoves(state, initialPos, color, destinations);
-
         return destinations;
     }
 
-    private static readonly int[] knightXChange = { -1,  1,  2, -2,  2, -2,  1, -1 };
-    private static readonly int[] knightYChange = {  2,  2,  1,  1, -1, -1, -2, -2 };
-
-    private static List<Move> knightMoves(BoardState state, Vector2Int initialPos, PieceColor color) {
+    private static List<Move> knightMoves(BoardState state, Vector2Int initialPos, PieceColor color)
+    {
         var destinations = new List<Move>(8);
-        for (int i = 0; i < 8; i++)
+
+        for (int i = 0; i < knightXChange.Length; i++)
+        {
             AddIfLegal(state, initialPos, color, initialPos.x + knightXChange[i], initialPos.y + knightYChange[i], destinations);
+        }
+
         return destinations;
     }
 
-    private static List<Move> pawnMoves(BoardState state, Vector2Int initialPos, PieceColor color) {
-        var destinations  = new List<Move>(6);
-        int forward  = color == PieceColor.White ? 1 : -1;
+    private static List<Move> pawnMoves(BoardState state, Vector2Int initialPos, PieceColor color)
+    {
+        var destinations = new List<Move>(6);
+        int forward = color == PieceColor.White ? 1 : -1;
         int startRow = color == PieceColor.White ? 1 : 6;
         int promotionRow = color == PieceColor.White ? 7 : 0;
 
         int oneRow = initialPos.y + forward;
-        if (BoardState.InBounds(initialPos.x, oneRow) && state.board[initialPos.x, oneRow] == null) {
-            AddPawnMove(destinations, initialPos, new Vector2Int(initialPos.x, oneRow), oneRow == promotionRow);
+        if (BoardState.InBounds(initialPos.x, oneRow) && PieceBits.isEmpty(state.whatIsAt(initialPos.x, oneRow)))
+        {
+            AddPawnMove(destinations, initialPos, new Vector2Int(initialPos.x, oneRow), oneRow == promotionRow, MoveFlags.None);
 
-            if (initialPos.y == startRow) {
+            if (initialPos.y == startRow)
+            {
                 int twoRow = initialPos.y + 2 * forward;
-                if (BoardState.InBounds(initialPos.x, twoRow) && state.board[initialPos.x, twoRow] == null) destinations.Add(new Move(initialPos, new Vector2Int(initialPos.x, twoRow)));
-            }
-        }
-
-        int leftCaptureCol = initialPos.x - 1;
-        if (BoardState.InBounds(leftCaptureCol, oneRow))
-        {
-            var leftCapture = state.board[leftCaptureCol, oneRow];
-            if (leftCapture.HasValue && leftCapture.Value.color != color && leftCapture.Value.type != PieceType.King)
-            {
-                AddPawnMove(destinations, initialPos, new Vector2Int(leftCaptureCol, oneRow), oneRow == promotionRow);
-            }
-        }
-
-        int rightCaptureCol = initialPos.x + 1;
-        if (BoardState.InBounds(rightCaptureCol, oneRow))
-        {
-            var rightCapture = state.board[rightCaptureCol, oneRow];
-            if (rightCapture.HasValue && rightCapture.Value.color != color && rightCapture.Value.type != PieceType.King)
-            {
-                AddPawnMove(destinations, initialPos, new Vector2Int(rightCaptureCol, oneRow), oneRow == promotionRow);
-            }
-        }
-
-        if (state.enPassantTarget.HasValue && state.enPassantTarget.Value.y == oneRow)
-        {
-            int fileDifference = Mathf.Abs(state.enPassantTarget.Value.x - initialPos.x);
-            if (fileDifference == 1)
-            {
-                Vector2Int capturedPawnPosition = new Vector2Int(state.enPassantTarget.Value.x, initialPos.y);
-                var capturedPawn = state.board[capturedPawnPosition.x, capturedPawnPosition.y];
-                if (capturedPawn.HasValue &&
-                    capturedPawn.Value.color != color &&
-                    capturedPawn.Value.type == PieceType.Pawn)
+                if (BoardState.InBounds(initialPos.x, twoRow) && PieceBits.isEmpty(state.whatIsAt(initialPos.x, twoRow)))
                 {
-                    destinations.Add(new Move(initialPos, state.enPassantTarget.Value, isEnPassant: true));
+                    destinations.Add(new Move(initialPos, new Vector2Int(initialPos.x, twoRow)));
                 }
             }
         }
 
+        AddPawnCapture(state, destinations, initialPos, color, initialPos.x - 1, oneRow, promotionRow);
+        AddPawnCapture(state, destinations, initialPos, color, initialPos.x + 1, oneRow, promotionRow);
+        AddEnPassantMove(state, destinations, initialPos, color, oneRow);
+
         return destinations;
     }
 
-    private static void AddIfLegal(BoardState state, Vector2Int initialPos, PieceColor color, int col, int row, List<Move> destinations) {
-        if (!BoardState.InBounds(col, row)) return;
+    private static void AddPawnCapture(BoardState state, List<Move> destinations, Vector2Int initialPos, PieceColor color, int col, int row, int promotionRow)
+    {
+        if (!BoardState.InBounds(col, row))
+        {
+            return;
+        }
 
-        var destination = state.board[col, row];
+        int capturedPiece = state.whatIsAt(col, row);
+        if (!PieceBits.isEmpty(capturedPiece) && PieceBits.GetColor(capturedPiece) != color && PieceBits.GetType(capturedPiece) != PieceType.King)
+        {
+            AddPawnMove(destinations, initialPos, new Vector2Int(col, row), row == promotionRow, MoveFlags.Capture);
+        }
+    }
 
-        if (!destination.HasValue)
+    private static void AddEnPassantMove(BoardState state, List<Move> destinations, Vector2Int initialPos, PieceColor color, int oneRow)
+    {
+        if (state.enPassantTarget < 0)
+        {
+            return;
+        }
+
+        int targetCol = state.enPassantTarget % 8;
+        int targetRow = state.enPassantTarget / 8;
+        if (targetRow != oneRow || Mathf.Abs(targetCol - initialPos.x) != 1)
+        {
+            return;
+        }
+
+        int capturedPawnSquare = BoardState.SquareIndex(targetCol, initialPos.y);
+        int capturedPawn = state.board[capturedPawnSquare];
+        if (!PieceBits.isEmpty(capturedPawn) &&
+            PieceBits.GetColor(capturedPawn) != color &&
+            PieceBits.GetType(capturedPawn) == PieceType.Pawn)
+        {
+            destinations.Add(new Move(initialPos, new Vector2Int(targetCol, targetRow), MoveFlags.Capture | MoveFlags.EnPassant));
+        }
+    }
+
+    private static void AddIfLegal(BoardState state, Vector2Int initialPos, PieceColor color, int col, int row, List<Move> destinations)
+    {
+        if (!BoardState.InBounds(col, row))
+        {
+            return;
+        }
+
+        int destination = state.whatIsAt(col, row);
+        if (PieceBits.isEmpty(destination))
         {
             destinations.Add(new Move(initialPos, new Vector2Int(col, row)));
             return;
         }
 
-        if (destination.Value.color != color && destination.Value.type != PieceType.King)
+        if (PieceBits.GetColor(destination) != color && PieceBits.GetType(destination) != PieceType.King)
         {
-            destinations.Add(new Move(initialPos, new Vector2Int(col, row)));
+            destinations.Add(new Move(initialPos, new Vector2Int(col, row), MoveFlags.Capture));
         }
     }
 
@@ -270,8 +311,8 @@ public static class MoveGenerator
             return false;
         }
 
-        var piece = state.board[col, row];
-        return piece.HasValue && piece.Value.color == color && piece.Value.type == type;
+        int piece = state.whatIsAt(col, row);
+        return !PieceBits.isEmpty(piece) && PieceBits.GetColor(piece) == color && PieceBits.GetType(piece) == type;
     }
 
     private static bool IsAttackedBySlidingPiece(BoardState state, Vector2Int kingPos, PieceColor attackerColor, Vector2Int[] directions, PieceType matchingSlider)
@@ -283,11 +324,11 @@ public static class MoveGenerator
 
             while (BoardState.InBounds(col, row))
             {
-                var piece = state.board[col, row];
-                if (piece.HasValue)
+                int piece = state.whatIsAt(col, row);
+                if (!PieceBits.isEmpty(piece))
                 {
-                    if (piece.Value.color == attackerColor &&
-                        (piece.Value.type == matchingSlider || piece.Value.type == PieceType.Queen))
+                    if (PieceBits.GetColor(piece) == attackerColor &&
+                        (PieceBits.GetType(piece) == matchingSlider || PieceBits.GetType(piece) == PieceType.Queen))
                     {
                         return true;
                     }
@@ -305,41 +346,37 @@ public static class MoveGenerator
 
     private static void AddCastlingMoves(BoardState state, Vector2Int kingPosition, PieceColor color, List<Move> destinations)
     {
-        bool kingMoved = color == PieceColor.White ? state.whiteKingMoved : state.blackKingMoved;
-        if (kingMoved || isInCheck(state, color))
+        if (isInCheck(state, color))
         {
             return;
         }
 
         int backRank = color == PieceColor.White ? 0 : 7;
-        bool kingsideRookMoved = color == PieceColor.White ? state.whiteKingsideRookMoved : state.blackKingsideRookMoved;
-        bool queensideRookMoved = color == PieceColor.White ? state.whiteQueensideRookMoved : state.blackQueensideRookMoved;
-
-        TryAddCastleMove(state, color, kingPosition, backRank, kingside: true, rookMoved: kingsideRookMoved, destinations);
-        TryAddCastleMove(state, color, kingPosition, backRank, kingside: false, rookMoved: queensideRookMoved, destinations);
+        TryAddCastleMove(state, color, kingPosition, backRank, kingside: true, destinations);
+        TryAddCastleMove(state, color, kingPosition, backRank, kingside: false, destinations);
     }
 
-    private static void TryAddCastleMove(BoardState state, PieceColor color, Vector2Int kingPosition, int backRank, bool kingside, bool rookMoved, List<Move> destinations)
+    private static void TryAddCastleMove(BoardState state, PieceColor color, Vector2Int kingPosition, int backRank, bool kingside, List<Move> destinations)
     {
-        if (rookMoved)
+        CastlingRights requiredRight = CastlingRight(color, kingside);
+        if ((state.castlingRights & requiredRight) == 0)
         {
             return;
         }
 
         int rookCol = kingside ? 7 : 0;
         int kingTargetCol = kingside ? 6 : 2;
-        int rookTargetCol = kingside ? 5 : 3;
         int step = kingside ? 1 : -1;
-        var rook = state.board[rookCol, backRank];
+        int rook = state.whatIsAt(rookCol, backRank);
 
-        if (!rook.HasValue || rook.Value.color != color || rook.Value.type != PieceType.Rook)
+        if (PieceBits.isEmpty(rook) || PieceBits.GetColor(rook) != color || PieceBits.GetType(rook) != PieceType.Rook)
         {
             return;
         }
 
         for (int col = kingPosition.x + step; col != rookCol; col += step)
         {
-            if (state.board[col, backRank].HasValue)
+            if (!PieceBits.isEmpty(state.whatIsAt(col, backRank)))
             {
                 return;
             }
@@ -355,25 +392,31 @@ public static class MoveGenerator
             }
         }
 
-        destinations.Add(new Move(
-            kingPosition,
-            new Vector2Int(kingTargetCol, backRank),
-            isCastling: true,
-            rookFrom: new Vector2Int(rookCol, backRank),
-            rookTo: new Vector2Int(rookTargetCol, backRank)));
+        destinations.Add(new Move(kingPosition, new Vector2Int(kingTargetCol, backRank), MoveFlags.Castling));
     }
 
-    private static void AddPawnMove(List<Move> destinations, Vector2Int from, Vector2Int to, bool isPromotion)
+    private static CastlingRights CastlingRight(PieceColor color, bool kingside)
+    {
+        if (color == PieceColor.White)
+        {
+            return kingside ? CastlingRights.WhiteKingside : CastlingRights.WhiteQueenside;
+        }
+
+        return kingside ? CastlingRights.BlackKingside : CastlingRights.BlackQueenside;
+    }
+
+    private static void AddPawnMove(List<Move> destinations, Vector2Int from, Vector2Int to, bool isPromotion, MoveFlags flags)
     {
         if (isPromotion)
         {
-            destinations.Add(new Move(from, to, promotionType: PieceType.Queen));
-            destinations.Add(new Move(from, to, promotionType: PieceType.Rook));
-            destinations.Add(new Move(from, to, promotionType: PieceType.Bishop));
-            destinations.Add(new Move(from, to, promotionType: PieceType.Knight));
+            MoveFlags promotionFlags = flags | MoveFlags.Promotion;
+            destinations.Add(new Move(from, to, promotionFlags, PieceType.Queen));
+            destinations.Add(new Move(from, to, promotionFlags, PieceType.Rook));
+            destinations.Add(new Move(from, to, promotionFlags, PieceType.Bishop));
+            destinations.Add(new Move(from, to, promotionFlags, PieceType.Knight));
             return;
         }
 
-        destinations.Add(new Move(from, to));
+        destinations.Add(new Move(from, to, flags));
     }
 }

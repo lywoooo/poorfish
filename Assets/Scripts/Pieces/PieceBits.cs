@@ -21,12 +21,12 @@ public static class PieceBits
         return color == PieceColor.Black ? piece | Black : piece;
     }
 
-    public static PieceType getType(int piece)
+    public static PieceType GetType(int piece)
     {
         return (PieceType)(piece & 7);
     }
 
-    public static PieceColor getColor(int piece)
+    public static PieceColor GetColor(int piece)
     {
         return isBlack(piece) ? PieceColor.Black : PieceColor.White;
     }
@@ -41,9 +41,9 @@ public static class PieceBits
         return piece == None;
     }
 
-    public static int getValue(int piece)
+    public static int GetValue(int piece)
     {
-        switch (getType(piece))
+        switch (GetType(piece))
         {
             case PieceType.Pawn: return 100;
             case PieceType.Knight: return 320;

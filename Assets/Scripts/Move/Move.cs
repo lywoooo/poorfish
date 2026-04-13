@@ -38,6 +38,8 @@ public readonly struct Move
     // from and to vectors
     public Vector2Int fromVector => new Vector2Int(from % 8, from / 8);
     public Vector2Int toVector => new Vector2Int(to % 8, to / 8);
+    public Vector2Int FromVector => fromVector;
+    public Vector2Int ToVector => toVector;
 
     // move constructor; flexible params with default params from & to and flex params flags and promoType
     public Move(

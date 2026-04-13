@@ -26,12 +26,12 @@ public readonly struct SearchStats
 
 public readonly struct SearchResult
 {
-    public readonly ChessMove bestMove;
+    public readonly Move bestMove;
     public readonly int bestScore;
     public readonly bool hasMove;
     public readonly SearchStats stats;
 
-    public SearchResult(ChessMove bestMove, int bestScore, bool hasMove, SearchStats stats)
+    public SearchResult(Move bestMove, int bestScore, bool hasMove, SearchStats stats)
     {
         this.bestMove = bestMove;
         this.bestScore = bestScore;

@@ -102,7 +102,8 @@ public class AIController : MonoBehaviour
         GameObject movedPiece = null;
 
         if(result.hasMove) {
-            Vector2Int fromPos = result.bestMove.from;
+            Vector2Int fromPos = result.bestMove.FromVector;
+            Vector2Int toPos = result.bestMove.ToVector;
             movedPiece = gm.PieceAtGrid(fromPos);
             if (movedPiece != null && gm.board != null)
             {
@@ -112,7 +113,7 @@ public class AIController : MonoBehaviour
             gm.ApplyMove(result.bestMove);
 
             Debug.Log(gm.currentPlayer.name + " (AI) [" + settings.profileName + "] played "
-                + fromPos + " to " + result.bestMove.to
+                + fromPos + " to " + toPos
                 + " with evaluated score of " + result.bestScore
                 + " at depth " + result.stats.completedDepth);
 

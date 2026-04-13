@@ -49,16 +49,17 @@ public sealed class ConfigurableEvaluator : IEvaluator
         {
             for (int col = 0; col < 8; col++)
             {
-                BoardState.BoardPiece? piece = state.whatIsAt(col, row);
-                if (piece == null)
+                int piece = state.whatIsAt(col, row);
+                if (PieceBits.IsEmpty(piece))
                 {
                     continue;
                 }
 
-                var currentPiece = piece.Value;
-                int signedColor = currentPiece.color == PieceColor.White ? 1 : -1;
-                materialScore += signedColor * Evaluator.GetMaterialValue(currentPiece.type);
-                pieceSquareScore += signedColor * PieceSquareTables.GetPST(currentPiece.type, currentPiece.color, col, row, endgame);
+                PieceType type = PieceBits.GetType(piece);
+                PieceColor color = PieceBits.GetColor(piece);
+                int signedColor = color == PieceColor.White ? 1 : -1;
+                materialScore += signedColor * Evaluator.GetMaterialValue(type);
+                pieceSquareScore += signedColor * PieceSquareTables.GetPST(type, color, col, row, endgame);
             }
         }
 
@@ -102,9 +103,9 @@ public static class Evaluator
             for (int col = 0; col < 8; col++)
             {
                 var piece = state.whatIsAt(col, row);
-                if (piece == null || piece.Value.type == PieceType.King) continue;
+                if (PieceBits.IsEmpty(piece) || PieceBits.GetType(piece) == PieceType.King) continue;
 
-                totalMaterial += GetMaterialValue(piece.Value.type);
+                totalMaterial += GetMaterialValue(PieceBits.GetType(piece));
             }
         }
 
