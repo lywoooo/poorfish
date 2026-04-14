@@ -22,13 +22,14 @@ public static class MoveGenerator
 
         foreach (var unfilteredMove in getUnfilteredMoves(state, color))
         {
-            var stateCheck = state.cloneBoard();
-            stateCheck.applyMove(unfilteredMove);
+            BoardState.MoveUndo undo = state.MakeMove(unfilteredMove);
 
-            if (!isInCheck(stateCheck, color))
+            if (!isInCheck(state, color))
             {
                 legalMoves.Add(unfilteredMove);
             }
+
+            state.UnmakeMove(unfilteredMove, undo);
         }
 
         legalMoves.Sort((a, b) => captureScore(state, b).CompareTo(captureScore(state, a)));
@@ -384,9 +385,12 @@ public static class MoveGenerator
 
         for (int col = kingPosition.x + step; col != kingTargetCol + step; col += step)
         {
-            var intermediate = state.cloneBoard();
-            intermediate.applyMove(new Move(kingPosition, new Vector2Int(col, backRank)));
-            if (isInCheck(intermediate, color))
+            Move intermediateMove = new Move(kingPosition, new Vector2Int(col, backRank));
+            BoardState.MoveUndo undo = state.MakeMove(intermediateMove);
+            bool isAttacked = isInCheck(state, color);
+            state.UnmakeMove(intermediateMove, undo);
+
+            if (isAttacked)
             {
                 return;
             }

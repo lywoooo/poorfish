@@ -319,14 +319,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   aiStartColorBlack: 0
-  moveDelay: 0.01
+  moveDelay: 0.1
   aiPickupDuration: 0.0012
   aiPickupLiftRatio: 0.18
   engineProfile: {fileID: 0}
   fallbackSettings:
     profileName: Baseline
     searchDepth: 6
-    maxThinkTimeSeconds: 0.5
+    maxThinkTimeSeconds: 1.5
     logSearchStats: 1
     evaluationWeights:
       materialWeight: 100
@@ -347,14 +347,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   aiStartColorBlack: 1
-  moveDelay: 0.01
+  moveDelay: 0.1
   aiPickupDuration: 0.0012
   aiPickupLiftRatio: 0.18
   engineProfile: {fileID: 0}
   fallbackSettings:
     profileName: Baseline
     searchDepth: 6
-    maxThinkTimeSeconds: 0.5
+    maxThinkTimeSeconds: 1.5
     logSearchStats: 1
     evaluationWeights:
       materialWeight: 100

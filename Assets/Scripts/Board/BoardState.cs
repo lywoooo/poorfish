@@ -63,19 +63,75 @@ public class BoardState
         return clone;
     }
 
+    public readonly struct MoveUndo
+    {
+        public readonly int movedPiece;
+        public readonly int capturedPiece;
+        public readonly int capturedSquare;
+        public readonly PieceColor previousCurrentTurn;
+        public readonly CastlingRights previousCastlingRights;
+        public readonly int previousEnPassantTarget;
+        public readonly Move previousLastMove;
+        public readonly bool previousHasLastMove;
+
+        public MoveUndo(
+            int movedPiece,
+            int capturedPiece,
+            int capturedSquare,
+            PieceColor previousCurrentTurn,
+            CastlingRights previousCastlingRights,
+            int previousEnPassantTarget,
+            Move previousLastMove,
+            bool previousHasLastMove)
+        {
+            this.movedPiece = movedPiece;
+            this.capturedPiece = capturedPiece;
+            this.capturedSquare = capturedSquare;
+            this.previousCurrentTurn = previousCurrentTurn;
+            this.previousCastlingRights = previousCastlingRights;
+            this.previousEnPassantTarget = previousEnPassantTarget;
+            this.previousLastMove = previousLastMove;
+            this.previousHasLastMove = previousHasLastMove;
+        }
+    }
+
     public void applyMove(Move move)
+    {
+        MakeMove(move);
+    }
+
+    public MoveUndo MakeMove(Move move)
     {
         int piece = board[move.from];
         if (PieceBits.isEmpty(piece))
         {
-            return;
+            return new MoveUndo(
+                PieceBits.None,
+                PieceBits.None,
+                move.to,
+                currentTurn,
+                castlingRights,
+                enPassantTarget,
+                lastMove,
+                hasLastMove);
         }
 
         int capturedPiece = board[move.to];
+        int capturedSquare = move.to;
         PieceColor color = PieceBits.GetColor(piece);
         PieceType type = PieceBits.GetType(piece);
         int fromRow = move.from / 8;
         int toRow = move.to / 8;
+
+        MoveUndo undo = new MoveUndo(
+            piece,
+            capturedPiece,
+            capturedSquare,
+            currentTurn,
+            castlingRights,
+            enPassantTarget,
+            lastMove,
+            hasLastMove);
 
         enPassantTarget = -1;
 
@@ -83,6 +139,16 @@ public class BoardState
         {
             int capturedPawnSquare = move.to + (color == PieceColor.White ? -8 : 8);
             capturedPiece = board[capturedPawnSquare];
+            capturedSquare = capturedPawnSquare;
+            undo = new MoveUndo(
+                piece,
+                capturedPiece,
+                capturedSquare,
+                undo.previousCurrentTurn,
+                undo.previousCastlingRights,
+                undo.previousEnPassantTarget,
+                undo.previousLastMove,
+                undo.previousHasLastMove);
             board[capturedPawnSquare] = PieceBits.None;
         }
 
@@ -117,6 +183,47 @@ public class BoardState
 
         lastMove = move;
         hasLastMove = true;
+
+        return undo;
+    }
+
+    public void UnmakeMove(Move move, MoveUndo undo)
+    {
+        if (PieceBits.isEmpty(undo.movedPiece))
+        {
+            currentTurn = undo.previousCurrentTurn;
+            castlingRights = undo.previousCastlingRights;
+            enPassantTarget = undo.previousEnPassantTarget;
+            lastMove = undo.previousLastMove;
+            hasLastMove = undo.previousHasLastMove;
+            return;
+        }
+
+        if (move.isCastling)
+        {
+            int rookFrom = move.to > move.from ? move.to + 1 : move.to - 2;
+            int rookTo = move.to > move.from ? move.to - 1 : move.to + 1;
+            board[rookFrom] = board[rookTo];
+            board[rookTo] = PieceBits.None;
+        }
+
+        board[move.from] = undo.movedPiece;
+        board[move.to] = PieceBits.None;
+
+        if (move.isEnPassant)
+        {
+            board[undo.capturedSquare] = undo.capturedPiece;
+        }
+        else
+        {
+            board[move.to] = undo.capturedPiece;
+        }
+
+        castlingRights = undo.previousCastlingRights;
+        currentTurn = undo.previousCurrentTurn;
+        enPassantTarget = undo.previousEnPassantTarget;
+        lastMove = undo.previousLastMove;
+        hasLastMove = undo.previousHasLastMove;
     }
 
     public static bool InBounds(int col, int row)

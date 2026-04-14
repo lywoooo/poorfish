@@ -29,6 +29,8 @@ public class MinimaxAB : ISearchEngine
         public int depth;
         public int score;
         public EntryType type;
+        public Move bestMove;
+        public bool hasBestMove; 
     }
 
     public const int POS_INF = 999999;
@@ -78,11 +80,11 @@ public class MinimaxAB : ISearchEngine
 
             foreach (Move move in legalMoves)
             {
-                var prospective = state.cloneBoard();
-                prospective.applyMove(move);
-                prospective.switchTurn();
+                BoardState.MoveUndo undo = state.MakeMove(move);
+                state.switchTurn();
+                int score = Search(state, depth - 1, NEG_INF, POS_INF);
+                state.UnmakeMove(move, undo);
 
-                int score = Search(prospective, depth - 1, NEG_INF, POS_INF);
                 if (timedOut)
                 {
                     break;
@@ -227,10 +229,11 @@ public class MinimaxAB : ISearchEngine
             {
                 foreach (var move in legalMoves)
                 {
-                    var newState = state.cloneBoard();
-                    newState.applyMove(move);
-                    newState.switchTurn();
-                    int eval = Search(newState, depth - 1, alpha, beta);
+                    BoardState.MoveUndo undo = state.MakeMove(move);
+                    state.switchTurn();
+                    int eval = Search(state, depth - 1, alpha, beta);
+                    state.UnmakeMove(move, undo);
+
                     if (timedOut)
                     {
                         return 0;
@@ -258,10 +261,11 @@ public class MinimaxAB : ISearchEngine
             {
                 foreach (var move in legalMoves)
                 {
-                    var newState = state.cloneBoard();
-                    newState.applyMove(move);
-                    newState.switchTurn();
-                    int eval = Search(newState, depth - 1, alpha, beta);
+                    BoardState.MoveUndo undo = state.MakeMove(move);
+                    state.switchTurn();
+                    int eval = Search(state, depth - 1, alpha, beta);
+                    state.UnmakeMove(move, undo);
+
                     if (timedOut)
                     {
                         return 0;
@@ -377,5 +381,73 @@ public class MinimaxAB : ISearchEngine
         }
 
         return sideToMove == PieceColor.White ? penalty : -penalty;
+    }
+
+    private static bool SameMove(Move a, Move b)
+    {
+        return a.from == b.from
+            && a.to == b.to
+            && a.flags == b.flags
+            && a.promotionType == b.promotionType;
+
+    }
+
+    private void OrderMoves(BoardState state, List<Move> moves, Move preferredMove, bool hasPreferredMove)
+    {
+        moves.Sort((a, b) => ScoreMove(state, b, preferredMove, hasPreferredMove).CompareTo(ScoreMove(state, a, preferredMove, hasPreferredMove)));
+    }
+
+    private int ScoreMove(BoardState state, Move move, Move preferredMove, bool hasPreferredMove)
+    {
+        if (hasPreferredMove && SameMove(move, preferredMove))
+        {
+            return 1_000_000;
+        }
+
+        int score = 0; 
+
+        if (move.isPromotion)
+        {
+            score += 800_000 + Evaluator.GetMaterialValue(move.promotionType);
+        }
+
+        if (move.isCapture)
+        {
+            score += 500_000 + CaptureScore(state, move);
+        }
+
+        if (move.isCastling)
+        {
+            score += 10_000;
+        }
+
+        return score;
+    }
+
+    private int CaptureScore(BoardState state, Move move)
+    {
+        int attacker = state.board[move.from];
+
+        PieceType victimType;
+
+        if (move.isEnPassant)
+        {
+            victimType = PieceType.Pawn;
+        }
+        else
+        {
+            int victim = state.board[move.to];
+
+            if (PieceBits.isEmpty(victim))
+            {
+                return 0;
+            }
+
+            victimType = PieceBits.GetType(victim);
+        }
+
+        PieceType attackerType = PieceBits.GetType(attacker);
+
+        return Evaluator.GetMaterialValue(victimType) - Evaluator.GetMaterialValue(attackerType);
     }
 }
