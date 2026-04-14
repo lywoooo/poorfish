@@ -5,13 +5,14 @@ public enum ChessMatchMode
 {
     HumanVsHuman,
     HumanVsAI,
-    AIvsAI
+    AIVsAI
 }
 
 public enum HumanSide
 {
     White,
-    Black
+    Black, 
+    Random
 }
 
 [DisallowMultipleComponent]
@@ -30,7 +31,7 @@ public class ChessMatchCoordinator : MonoBehaviour
     [SerializeField] private BoardUI boardUI;
     [SerializeField] private MoveSelector moveSelector;
     [SerializeField] private bool autoConfigureInEditor = true;
-    private AIVsAICsvRecorder csvRecorder;
+    private CsvRecorder csvRecorder;
     private int completedBatchGames;
     private bool batchRestartQueued;
 
@@ -87,7 +88,7 @@ public class ChessMatchCoordinator : MonoBehaviour
 
         if (csvRecorder == null)
         {
-            csvRecorder = GetComponent<AIVsAICsvRecorder>();
+            csvRecorder = GetComponent<CsvRecorder>();
         }
 
         if (gameManager == null)
@@ -106,12 +107,12 @@ public class ChessMatchCoordinator : MonoBehaviour
         AIController[] aiControllers = GetComponents<AIController>();
         if (moveSelector != null)
         {
-            moveSelector.AllowHumanInput = matchMode != ChessMatchMode.AIvsAI;
+            moveSelector.AllowHumanInput = matchMode != ChessMatchMode.AIVsAI;
         }
 
         if (Application.isPlaying && csvRecorder == null)
         {
-            csvRecorder = gameObject.AddComponent<AIVsAICsvRecorder>();
+            csvRecorder = gameObject.AddComponent<CsvRecorder>();
         }
 
         foreach (AIController aiController in aiControllers)
@@ -121,8 +122,8 @@ public class ChessMatchCoordinator : MonoBehaviour
 
         if (Application.isPlaying && csvRecorder != null)
         {
-            bool shouldRecord = matchMode == ChessMatchMode.AIvsAI && recordAIVsAIToCsv;
-            int plannedGames = matchMode == ChessMatchMode.AIvsAI && runAIVsAIBatch ? Mathf.Max(1, aiVsAiBatchGameCount) : 1;
+            bool shouldRecord = matchMode == ChessMatchMode.AIVsAI && recordAIVsAIToCsv;
+            int plannedGames = matchMode == ChessMatchMode.AIVsAI && runAIVsAIBatch ? Mathf.Max(1, aiVsAiBatchGameCount) : 1;
             if (resetBatchProgress)
             {
                 completedBatchGames = 0;
@@ -138,7 +139,7 @@ public class ChessMatchCoordinator : MonoBehaviour
             case ChessMatchMode.HumanVsAI:
                 ConfigureHumanVsAI(aiControllers);
                 return;
-            case ChessMatchMode.AIvsAI:
+            case ChessMatchMode.AIVsAI:
                 ConfigureAIVsAI(aiControllers);
                 return;
         }
@@ -146,7 +147,7 @@ public class ChessMatchCoordinator : MonoBehaviour
 
     private void HandleGameEnded(string result, GameResultType resultType)
     {
-        if (!Application.isPlaying || matchMode != ChessMatchMode.AIvsAI)
+        if (!Application.isPlaying || matchMode != ChessMatchMode.AIVsAI)
         {
             return;
         }

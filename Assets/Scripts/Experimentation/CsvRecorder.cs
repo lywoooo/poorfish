@@ -5,7 +5,7 @@ using System.IO;
 using UnityEngine;
 
 [DisallowMultipleComponent]
-public class AIVsAICsvRecorder : MonoBehaviour
+public class CsvRecorder : MonoBehaviour
 {
     private readonly List<RecordedMove> recordedMoves = new List<RecordedMove>(256);
     private GameManager gameManager;

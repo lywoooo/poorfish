@@ -50,7 +50,7 @@ public sealed class ConfigurableEvaluator : IEvaluator
             for (int col = 0; col < 8; col++)
             {
                 int piece = state.whatIsAt(col, row);
-                if (PieceBits.IsEmpty(piece))
+                if (PieceBits.isEmpty(piece))
                 {
                     continue;
                 }
@@ -103,7 +103,7 @@ public static class Evaluator
             for (int col = 0; col < 8; col++)
             {
                 var piece = state.whatIsAt(col, row);
-                if (PieceBits.IsEmpty(piece) || PieceBits.GetType(piece) == PieceType.King) continue;
+                if (PieceBits.isEmpty(piece) || PieceBits.GetType(piece) == PieceType.King) continue;
 
                 totalMaterial += GetMaterialValue(PieceBits.GetType(piece));
             }
