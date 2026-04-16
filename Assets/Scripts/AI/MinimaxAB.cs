@@ -17,34 +17,15 @@ public class MinimaxAB : ISearchEngine
         }
     }
 
-    private enum EntryType
-    {
-        Exact,
-        LowerBound,
-        UpperBound
-    }
-
-    private struct TranspositionEntry
-    {
-        public int depth;
-        public int score;
-        public EntryType type;
-        public Move bestMove;
-        public bool hasBestMove; 
-    }
-
     public const int POS_INF = 999999;
     public const int NEG_INF = -999999;
     private const int MateScore = 900000;
-    private readonly Dictionary<ulong, TranspositionEntry> transpositionTable = new Dictionary<ulong, TranspositionEntry>(32768);
     private readonly IEvaluator evaluator;
-    private readonly Dictionary<ulong, int> repetitionCounts = new Dictionary<ulong, int>(128);
     private float searchDeadline;
     private bool hasDeadline;
     private bool timedOut;
     private int nodesVisited;
     private int leafEvaluations;
-    private int transpositionHits;
     private int alphaBetaCutoffs;
     private float searchStartTime;
     private SearchBias searchBias;
@@ -66,11 +47,12 @@ public class MinimaxAB : ISearchEngine
         searchBias = new SearchBias(
             settings.evaluationWeights.drawPenalty,
             settings.evaluationWeights.repetitionPenalty);
-        repetitionCounts.Clear();
 
         Move bestMove = legalMoves[0];
         int bestScore = evaluator.Evaluate(state);
         int completedDepth = 0;
+        Move previousDepthBestMove = default;
+        bool hasPreviousDepthBestMove = false;
 
         for (int depth = 1; depth <= settings.searchDepth; depth++)
         {
@@ -78,19 +60,16 @@ public class MinimaxAB : ISearchEngine
             int depthBestScore = aiColor == PieceColor.Black ? POS_INF : NEG_INF;
             bool hasDepthMove = false;
 
+            OrderMoves(state, legalMoves, previousDepthBestMove, hasPreviousDepthBestMove);
+
             foreach (Move move in legalMoves)
             {
-                BoardState.MoveUndo undo = state.MakeMove(move);
-                state.switchTurn();
-                int score = Search(state, depth - 1, NEG_INF, POS_INF);
-                state.UnmakeMove(move, undo);
+                int score = SearchChildMove(state, move, depth, NEG_INF, POS_INF);
 
                 if (timedOut)
                 {
                     break;
                 }
-
-                score = ApplyImmediateReversalPenalty(state, move, score);
 
                 bool scoreIsBetter = aiColor == PieceColor.Black ? score < depthBestScore : score > depthBestScore;
                 if (scoreIsBetter || !hasDepthMove)
@@ -109,6 +88,8 @@ public class MinimaxAB : ISearchEngine
             completedDepth = depth;
             bestMove = depthBestMove;
             bestScore = depthBestScore;
+            previousDepthBestMove = depthBestMove;
+            hasPreviousDepthBestMove = hasDepthMove;
         }
 
         EndTimedSearch();
@@ -120,7 +101,6 @@ public class MinimaxAB : ISearchEngine
         timedOut = false;
         nodesVisited = 0;
         leafEvaluations = 0;
-        transpositionHits = 0;
         alphaBetaCutoffs = 0;
         searchStartTime = Time.realtimeSinceStartup;
 
@@ -144,7 +124,7 @@ public class MinimaxAB : ISearchEngine
         return new SearchStats(
             nodesVisited,
             leafEvaluations,
-            transpositionHits,
+            0,
             alphaBetaCutoffs,
             completedDepth,
             (Time.realtimeSinceStartup - searchStartTime) * 1000f);
@@ -160,182 +140,91 @@ public class MinimaxAB : ISearchEngine
             return 0;
         }
 
-        ulong hash = state.ComputeHash();
-        int priorVisits = PushPathVisit(hash);
-
-        try
+        if (depth == 0)
         {
-            if (priorVisits > 0 && searchBias.repetitionPenalty > 0)
+            leafEvaluations++;
+            return evaluator.Evaluate(state);
+        }
+
+        var legalMoves = MoveGenerator.getLegalMoves(state, state.currentTurn);
+        OrderMoves(state, legalMoves, default, false);
+
+        if (legalMoves.Count == 0)
+        {
+            int terminalScore;
+            if (MoveGenerator.isInCheck(state, state.currentTurn))
             {
-                return RepetitionPenaltyForSideToMove(state.currentTurn, priorVisits);
-            }
-
-            int originalAlpha = alpha;
-            int originalBeta = beta;
-
-            if (transpositionTable.TryGetValue(hash, out TranspositionEntry cached) && cached.depth >= depth)
-            {
-                transpositionHits++;
-                switch (cached.type)
-                {
-                    case EntryType.Exact:
-                        return cached.score;
-                    case EntryType.LowerBound:
-                        alpha = Mathf.Max(alpha, cached.score);
-                        break;
-                    case EntryType.UpperBound:
-                        beta = Mathf.Min(beta, cached.score);
-                        break;
-                }
-
-                if (alpha >= beta)
-                {
-                    return cached.score;
-                }
-            }
-
-            var legalMoves = MoveGenerator.getLegalMoves(state, state.currentTurn);
-
-            if (legalMoves.Count == 0)
-            {
-                int terminalScore;
-                if (MoveGenerator.isInCheck(state, state.currentTurn))
-                {
-                    terminalScore = state.currentTurn == PieceColor.White
-                        ? -MateScore - depth
-                        : MateScore + depth;
-                }
-                else
-                {
-                    terminalScore = DrawPenaltyForSideToMove(state.currentTurn);
-                }
-
-                transpositionTable[hash] = new TranspositionEntry { depth = depth, score = terminalScore, type = EntryType.Exact };
-                return terminalScore;
-            }
-
-            if (depth == 0)
-            {
-                leafEvaluations++;
-                int evaluation = evaluator.Evaluate(state);
-                transpositionTable[hash] = new TranspositionEntry { depth = depth, score = evaluation, type = EntryType.Exact };
-                return evaluation;
-            }
-
-            bool maximizing = state.currentTurn == PieceColor.White;
-            int bestScore = maximizing ? NEG_INF : POS_INF;
-
-            if (maximizing)
-            {
-                foreach (var move in legalMoves)
-                {
-                    BoardState.MoveUndo undo = state.MakeMove(move);
-                    state.switchTurn();
-                    int eval = Search(state, depth - 1, alpha, beta);
-                    state.UnmakeMove(move, undo);
-
-                    if (timedOut)
-                    {
-                        return 0;
-                    }
-
-                    eval = ApplyImmediateReversalPenalty(state, move, eval);
-
-                    if (eval > bestScore)
-                    {
-                        bestScore = eval;
-                    }
-
-                    if (eval > alpha)
-                    {
-                        alpha = eval;
-                    }
-                    if (beta <= alpha)
-                    {
-                        alphaBetaCutoffs++;
-                        break;
-                    }
-                }
+                terminalScore = state.currentTurn == PieceColor.White
+                    ? -MateScore - depth
+                    : MateScore + depth;
             }
             else
             {
-                foreach (var move in legalMoves)
-                {
-                    BoardState.MoveUndo undo = state.MakeMove(move);
-                    state.switchTurn();
-                    int eval = Search(state, depth - 1, alpha, beta);
-                    state.UnmakeMove(move, undo);
-
-                    if (timedOut)
-                    {
-                        return 0;
-                    }
-
-                    eval = ApplyImmediateReversalPenalty(state, move, eval);
-
-                    if (eval < bestScore)
-                    {
-                        bestScore = eval;
-                    }
-
-                    if (eval < beta)
-                    {
-                        beta = eval;
-                    }
-                    if (beta <= alpha)
-                    {
-                        alphaBetaCutoffs++;
-                        break;
-                    }
-                }
+                terminalScore = DrawPenaltyForSideToMove(state.currentTurn);
             }
 
-            EntryType entryType = EntryType.Exact;
-            if (bestScore <= originalAlpha)
-            {
-                entryType = EntryType.UpperBound;
-            }
-            else if (bestScore >= originalBeta)
-            {
-                entryType = EntryType.LowerBound;
-            }
-
-            transpositionTable[hash] = new TranspositionEntry { depth = depth, score = bestScore, type = entryType };
-            return bestScore;
+            return terminalScore;
         }
-        finally
+
+        bool maximizing = state.currentTurn == PieceColor.White;
+        int bestScore = maximizing ? NEG_INF : POS_INF;
+
+        foreach (var move in legalMoves)
         {
-            PopPathVisit(hash, priorVisits);
+            int eval = SearchChildMove(state, move, depth, alpha, beta);
+
+            if (timedOut)
+            {
+                return 0;
+            }
+
+            if (IsBetterScore(eval, bestScore, maximizing))
+            {
+                bestScore = eval;
+            }
+
+            if (maximizing)
+            {
+                alpha = Mathf.Max(alpha, eval);
+            }
+            else
+            {
+                beta = Mathf.Min(beta, eval);
+            }
+
+            if (beta <= alpha)
+            {
+                alphaBetaCutoffs++;
+                break;
+            }
         }
+
+        return bestScore;
     }
 
-    private int PushPathVisit(ulong hash)
+    private int SearchChildMove(BoardState state, Move move, int depth, int alpha, int beta)
     {
-        int priorVisits = repetitionCounts.TryGetValue(hash, out int visitCount) ? visitCount : 0;
-        repetitionCounts[hash] = priorVisits + 1;
-        return priorVisits;
-    }
+        BoardState.MoveUndo undo = state.MakeMove(move);
+        state.switchTurn();
+        int eval = Search(state, depth - 1, alpha, beta);
+        state.UnmakeMove(move, undo);
 
-    private void PopPathVisit(ulong hash, int priorVisits)
-    {
-        if (priorVisits == 0)
+        if (timedOut)
         {
-            repetitionCounts.Remove(hash);
-            return;
+            return 0;
         }
 
-        repetitionCounts[hash] = priorVisits;
+        return ApplyImmediateReversalPenalty(state, move, eval);
+    }
+
+    private static bool IsBetterScore(int score, int bestScore, bool maximizing)
+    {
+        return maximizing ? score > bestScore : score < bestScore;
     }
 
     private int DrawPenaltyForSideToMove(PieceColor sideToMove)
     {
         return SignedPenaltyForSideToMove(sideToMove, searchBias.drawPenalty);
-    }
-
-    private int RepetitionPenaltyForSideToMove(PieceColor sideToMove, int priorVisits)
-    {
-        int scaledPenalty = searchBias.drawPenalty + (searchBias.repetitionPenalty * (priorVisits + 1));
-        return SignedPenaltyForSideToMove(sideToMove, scaledPenalty);
     }
 
     private int ApplyImmediateReversalPenalty(BoardState state, Move move, int evaluation)
@@ -389,7 +278,6 @@ public class MinimaxAB : ISearchEngine
             && a.to == b.to
             && a.flags == b.flags
             && a.promotionType == b.promotionType;
-
     }
 
     private void OrderMoves(BoardState state, List<Move> moves, Move preferredMove, bool hasPreferredMove)
@@ -404,7 +292,7 @@ public class MinimaxAB : ISearchEngine
             return 1_000_000;
         }
 
-        int score = 0; 
+        int score = 0;
 
         if (move.isPromotion)
         {
@@ -448,6 +336,6 @@ public class MinimaxAB : ISearchEngine
 
         PieceType attackerType = PieceBits.GetType(attacker);
 
-        return Evaluator.GetMaterialValue(victimType) - Evaluator.GetMaterialValue(attackerType);
+        return Evaluator.GetMaterialValue(victimType) * 10 - Evaluator.GetMaterialValue(attackerType);
     }
 }

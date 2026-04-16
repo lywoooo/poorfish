@@ -32,22 +32,7 @@ public static class MoveGenerator
             state.UnmakeMove(unfilteredMove, undo);
         }
 
-        legalMoves.Sort((a, b) => captureScore(state, b).CompareTo(captureScore(state, a)));
         return legalMoves;
-    }
-
-    private static int captureScore(BoardState state, Move move)
-    {
-        int movingPiece = state.board[move.from];
-        int victim = state.board[move.to];
-
-        if (move.isEnPassant && !PieceBits.isEmpty(movingPiece))
-        {
-            int capturedPawnSquare = move.to + (PieceBits.GetColor(movingPiece) == PieceColor.White ? -8 : 8);
-            victim = state.board[capturedPawnSquare];
-        }
-
-        return PieceBits.isEmpty(victim) ? 0 : Evaluator.GetMaterialValue(PieceBits.GetType(victim));
     }
 
     public static bool isInCheck(BoardState state, PieceColor color)

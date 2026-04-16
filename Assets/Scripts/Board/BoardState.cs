@@ -2,10 +2,6 @@ using UnityEngine;
 
 public class BoardState
 {
-    // Replace with Zobrist hashing once the board representation is stable.
-    private const ulong HashOffset = 1469598103934665603UL;
-    private const ulong HashPrime = 1099511628211UL;
-
     public int[] board;
     public PieceColor currentTurn;
     public CastlingRights castlingRights;
@@ -270,46 +266,6 @@ public class BoardState
         }
 
         return new Vector2Int(-1, -1);
-    }
-
-    public ulong ComputeHash()
-    {
-        ulong hash = HashOffset;
-
-        for (int square = 0; square < board.Length; square++)
-        {
-            hash ^= (ulong)board[square] + (ulong)square;
-            hash *= HashPrime;
-        }
-
-        hash ^= (ulong)currentTurn + 97UL;
-        hash *= HashPrime;
-
-        hash ^= (ulong)castlingRights + 131UL;
-        hash *= HashPrime;
-
-        if (enPassantTarget >= 0)
-        {
-            hash ^= (ulong)enPassantTarget + 193UL;
-            hash *= HashPrime;
-        }
-
-        if (hasLastMove)
-        {
-            hash ^= EncodeMove(lastMove) + 389UL;
-            hash *= HashPrime;
-        }
-
-        return hash;
-    }
-
-    private static ulong EncodeMove(Move move)
-    {
-        ulong encoded = (ulong)(move.from & 63);
-        encoded |= (ulong)(move.to & 63) << 6;
-        encoded |= ((ulong)move.promotionType & 7UL) << 12;
-        encoded |= ((ulong)move.flags & 15UL) << 15;
-        return encoded;
     }
 
     private void UpdateCastlingState(int movingPiece, int from, int capturedPiece, int capturePosition)
