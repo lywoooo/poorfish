@@ -12,6 +12,11 @@ public static class FEN
     
     public static bool LoadFen(string fen, out BoardState state)
     {
+        return TryLoadFen(fen, out state);
+    }
+
+    public static bool TryLoadFen(string fen, out BoardState state)
+    {
         state = new BoardState();
 
         if (string.IsNullOrWhiteSpace(fen))
@@ -25,22 +30,22 @@ public static class FEN
             return false;
         }
 
-        if (!ParsePieces(parts[0], state))
+        if (!TryParsePieces(parts[0], state))
         {
             return false;
         }
 
-        if (!ParseActiveColor(parts[1], out state.currentTurn))
+        if (!TryParseActiveColor(parts[1], out state.currentTurn))
         {
             return false;
         }
 
-        if (!ParseCastling(parts[2], out state.castlingRights))
+        if (!TryParseCastling(parts[2], out state.castlingRights))
         {
             return false;
         }
 
-        if (!ParseSquare(parts[3], out state.enPassantTarget))
+        if (!TryParseSquareOrNone(parts[3], out state.enPassantTarget))
         {
             return false;
         }
@@ -51,7 +56,7 @@ public static class FEN
         return true;
     }
 
-    private static bool ParsePieces(string placement, BoardState state)
+    private static bool TryParsePieces(string placement, BoardState state)
     {
         string[] ranks = placement.Split('/');
         if (ranks.Length != 8)
@@ -80,7 +85,7 @@ public static class FEN
                     continue;
                 }
 
-                if (!ParseIndividualPiece(symbol, out PieceType type, out PieceColor color))
+                if (!TryParsePiece(symbol, out PieceType type, out PieceColor color))
                 {
                     return false;
                 }
@@ -104,22 +109,27 @@ public static class FEN
         return true;
     }
 
-    private static bool ParseIndividualPiece(char symbol, out PieceType type, out PieceColor color)
+    private static bool TryParsePiece(char symbol, out PieceType type, out PieceColor color)
     {
-        color = char.IsLower(symbol) ? PieceColor.Black : PieceColor.White;
+        type = PieceType.None;
+        color = default;
 
         switch(char.ToLowerInvariant(symbol))
         {
-            case 'p' : type = PieceType.Pawn; return true;
-            case 'n' : type = PieceType.Knight; return true;
-            case 'r' : type = PieceType.Rook; return true;
-            case 'b' : type = PieceType.Bishop; return true;
-            case 'q' : type = PieceType.Queen; return true;
-            case 'k' : type = PieceType.King; return true;
-            default : type = PieceType.None; return false;
+            case 'p' : type = PieceType.Pawn; break;
+            case 'n' : type = PieceType.Knight; break;
+            case 'r' : type = PieceType.Rook; break;
+            case 'b' : type = PieceType.Bishop; break;
+            case 'q' : type = PieceType.Queen; break;
+            case 'k' : type = PieceType.King; break;
+            default : return false;
         }
+
+        color = char.IsLower(symbol) ? PieceColor.Black : PieceColor.White;
+        return true;
     }
-    private static bool ParseActiveColor(string token, out PieceColor color)
+
+    private static bool TryParseActiveColor(string token, out PieceColor color)
     {
         switch (token)
         {
@@ -128,7 +138,8 @@ public static class FEN
             default : color = default; return false;
         }
     }
-    private static bool ParseCastling(string token, out CastlingRights rights)
+
+    private static bool TryParseCastling(string token, out CastlingRights rights)
     {
         rights = CastlingRights.None;
 
@@ -152,13 +163,20 @@ public static class FEN
         return true;
     }
 
-    private static bool ParseSquare(string token, out int square)
+    private static bool TryParseSquareOrNone(string token, out int square)
     {
-        square = -1; 
         if (token == "-")
         {
+            square = -1;
             return true;
         }
+
+        return TryParseSquare(token, out square);
+    }
+
+    private static bool TryParseSquare(string token, out int square)
+    {
+        square = -1;
 
         if (token.Length != 2)
         {

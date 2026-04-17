@@ -6,7 +6,7 @@ public class BoardUI : MonoBehaviour
     [SerializeField] public GameObject SquarePrefab;
     [SerializeField] private Color darkColor;
     [SerializeField] private Color lightColor;
-    [SerializeField] private Color frameColor = new Color(0.18f, 0.13f, 0.09f, 0.96f);
+    [SerializeField] private Color frameColor;
     private GameObject[,] Board = new GameObject[8, 8];
     private GameObject boardFrame;
 

@@ -28,6 +28,7 @@
  * THE SOFTWARE.
  */
 
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -44,10 +45,16 @@ public enum GameResultType
 public class GameManager : MonoBehaviour
 {
     public static GameManager instance;
+    public static BoardState gs;
     public static event System.Action<Vector2Int, Vector2Int> MoveApplied;
     public static event System.Action<string, GameResultType> GameEnded;
 
     public Board board;
+
+    [Header("FEN Setup")]
+    [SerializeField] private bool useFenStartingPosition;
+    [TextArea]
+    [SerializeField] private string startingFen;
 
     // piece game object
     public GameObject piecePrefab;
@@ -77,6 +84,8 @@ public class GameManager : MonoBehaviour
 
     private Player white;
     private Player black;
+    private readonly string defaultFENString = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    [SerializeField] private string loadFENString;
     public Player currentPlayer;
     public Player otherPlayer;
     public bool IsGameOver { get; private set; }
@@ -122,32 +131,9 @@ public class GameManager : MonoBehaviour
 
     private void InitialSetup()
     {
-        AddPiece(PieceType.Rook, white, 0, 0);
-        AddPiece(PieceType.Knight, white, 1, 0);
-        AddPiece(PieceType.Bishop, white, 2, 0);
-        AddPiece(PieceType.Queen, white, 3, 0);
-        AddPiece(PieceType.King, white, 4, 0);
-        AddPiece(PieceType.Bishop, white, 5, 0);
-        AddPiece(PieceType.Knight, white, 6, 0);
-        AddPiece(PieceType.Rook, white, 7, 0);
-
-        for (int i = 0; i < 8; i++)
+        if (FEN.LoadFen(defaultFENString, out gs))
         {
-            AddPiece(PieceType.Pawn, white, i, 1);
-        }
-
-        AddPiece(PieceType.Rook, black, 0, 7);
-        AddPiece(PieceType.Knight, black, 1, 7);
-        AddPiece(PieceType.Bishop, black, 2, 7);
-        AddPiece(PieceType.Queen, black, 3, 7);
-        AddPiece(PieceType.King, black, 4, 7);
-        AddPiece(PieceType.Bishop, black, 5, 7);
-        AddPiece(PieceType.Knight, black, 6, 7);
-        AddPiece(PieceType.Rook, black, 7, 7);
-
-        for (int i = 0; i < 8; i++)
-        {
-            AddPiece(PieceType.Pawn, black, i, 6);
+            SetupFromBoardState(gs);
         }
     }
 
@@ -471,6 +457,41 @@ public class GameManager : MonoBehaviour
             return;
         }
 
+        ResetMatchState();
+
+        if (useFenStartingPosition && !string.IsNullOrWhiteSpace(startingFen))
+        {
+            if (FEN.TryLoadFen(startingFen, out BoardState fenState))
+            {
+                SetupFromBoardState(fenState);
+                return;
+            }
+
+            Debug.LogWarning("Invalid starting FEN. Falling back to the normal starting position.", this);
+        }
+
+        InitialSetup();
+    }
+
+    public bool TryLoadFenPosition(string fen)
+    {
+        if (!ValidateConfiguration())
+        {
+            return false;
+        }
+
+        if (!FEN.TryLoadFen(fen, out BoardState state))
+        {
+            return false;
+        }
+
+        ResetMatchState();
+        SetupFromBoardState(state);
+        return true;
+    }
+
+    private void ResetMatchState()
+    {
         ClearBoardState();
 
         pieces = new GameObject[8, 8];
@@ -493,8 +514,46 @@ public class GameManager : MonoBehaviour
         EnPassantTarget = null;
         HasLastAppliedMove = false;
         LastAppliedMove = default;
+    }
 
-        InitialSetup();
+    private void SetupFromBoardState(BoardState state)
+    {
+        for (int square = 0; square < state.board.Length; square++)
+        {
+            int piece = state.board[square];
+            if (PieceBits.isEmpty(piece))
+            {
+                continue;
+            }
+
+            PieceColor color = PieceBits.GetColor(piece);
+            Player owner = color == PieceColor.White ? white : black;
+            AddPiece(PieceBits.GetType(piece), owner, square % 8, square / 8);
+        }
+
+        currentPlayer = state.currentTurn == PieceColor.White ? white : black;
+        otherPlayer = currentPlayer == white ? black : white;
+        ApplyCastlingRights(state.castlingRights);
+        EnPassantTarget = state.enPassantTarget >= 0
+            ? new Vector2Int(state.enPassantTarget % 8, state.enPassantTarget / 8)
+            : null;
+        HasLastAppliedMove = state.hasLastMove;
+        LastAppliedMove = state.lastMove;
+    }
+
+    private void ApplyCastlingRights(CastlingRights rights)
+    {
+        bool whiteKingside = (rights & CastlingRights.WhiteKingside) != 0;
+        bool whiteQueenside = (rights & CastlingRights.WhiteQueenside) != 0;
+        bool blackKingside = (rights & CastlingRights.BlackKingside) != 0;
+        bool blackQueenside = (rights & CastlingRights.BlackQueenside) != 0;
+
+        WhiteKingMoved = !whiteKingside && !whiteQueenside;
+        WhiteKingsideRookMoved = !whiteKingside;
+        WhiteQueensideRookMoved = !whiteQueenside;
+        BlackKingMoved = !blackKingside && !blackQueenside;
+        BlackKingsideRookMoved = !blackKingside;
+        BlackQueensideRookMoved = !blackQueenside;
     }
 
     private bool ValidateConfiguration()
