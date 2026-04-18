@@ -80,8 +80,14 @@ public partial class GameManager
         BlackKingsideRookMoved = false;
         BlackQueensideRookMoved = false;
         EnPassantTarget = null;
+        HalfmoveClock = 0;
         HasLastAppliedMove = false;
         LastAppliedMove = default;
+        HasLastWhiteAppliedMove = false;
+        LastWhiteAppliedMove = default;
+        HasLastBlackAppliedMove = false;
+        LastBlackAppliedMove = default;
+        positionRepetitionCounts.Clear();
     }
 
     private void SetupFromBoardState(BoardState state)
@@ -105,8 +111,15 @@ public partial class GameManager
         EnPassantTarget = state.enPassantTarget >= 0
             ? new Vector2Int(state.enPassantTarget % 8, state.enPassantTarget / 8)
             : null;
+        HalfmoveClock = state.halfmoveClock;
         HasLastAppliedMove = state.hasLastMove;
         LastAppliedMove = state.lastMove;
+        HasLastWhiteAppliedMove = state.hasLastWhiteMove;
+        LastWhiteAppliedMove = state.lastWhiteMove;
+        HasLastBlackAppliedMove = state.hasLastBlackMove;
+        LastBlackAppliedMove = state.lastBlackMove;
+        RegisterCurrentPosition();
+        EvaluateTurnState();
     }
 
     private void ApplyCastlingRights(CastlingRights rights)

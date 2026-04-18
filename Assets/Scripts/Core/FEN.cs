@@ -45,6 +45,11 @@ public static class FEN
             return false;
         }
 
+        if (parts.Length >= 5 && !TryParseNonNegativeInt(parts[4], out state.halfmoveClock))
+        {
+            return false;
+        }
+
         state.hasLastMove = false;
         state.lastMove = default;
 
@@ -92,6 +97,10 @@ public static class FEN
 
                 int square = BoardState.SquareIndex(col, row);
                 state.board[square] = PieceBits.CreatePiece(type, color);
+                if (type == PieceType.King)
+                {
+                    state.SetKingSquare(color, square);
+                }
                 col++;
             }
 
@@ -193,4 +202,8 @@ public static class FEN
         return true;
     }
 
+    private static bool TryParseNonNegativeInt(string token, out int value)
+    {
+        return int.TryParse(token, out value) && value >= 0;
+    }
 }

@@ -3,23 +3,52 @@ using UnityEngine;
 
 public class MinimaxAB : ISearchEngine
 {
+    private enum TranspositionBound
+    {
+        Exact,
+        Lower,
+        Upper
+    }
+
     private readonly struct SearchBias
     {
         public readonly int drawPenalty;
         public readonly int repetitionPenalty;
         public readonly int immediateReversalPenalty;
+        public readonly int ownReversalPenalty;
 
         public SearchBias(int drawPenalty, int repetitionPenalty)
         {
             this.drawPenalty = Mathf.Max(0, drawPenalty);
             this.repetitionPenalty = Mathf.Max(0, repetitionPenalty);
             immediateReversalPenalty = this.drawPenalty + (this.repetitionPenalty * 2);
+            ownReversalPenalty = this.repetitionPenalty;
+        }
+    }
+
+    private readonly struct TranspositionEntry
+    {
+        public readonly int depth;
+        public readonly int score;
+        public readonly Move bestMove;
+        public readonly bool hasBestMove;
+        public readonly TranspositionBound bound;
+
+        public TranspositionEntry(int depth, int score, Move bestMove, bool hasBestMove, TranspositionBound bound)
+        {
+            this.depth = depth;
+            this.score = score;
+            this.bestMove = bestMove;
+            this.hasBestMove = hasBestMove;
+            this.bound = bound;
         }
     }
 
     public const int POS_INF = 999999;
     public const int NEG_INF = -999999;
     private const int MateScore = 900000;
+    private const int MaxAdaptiveDepthBonus = 3;
+    private const int MaxTranspositionEntries = 262_144;
     private readonly IEvaluator evaluator;
     private float searchDeadline;
     private bool hasDeadline;
@@ -27,8 +56,16 @@ public class MinimaxAB : ISearchEngine
     private int nodesVisited;
     private int leafEvaluations;
     private int alphaBetaCutoffs;
+    private int transpositionHits;
+    private int checkmatesFound;
     private float searchStartTime;
     private SearchBias searchBias;
+    private readonly List<Move> rootLegalMoves = new List<Move>(128);
+    private readonly List<Move> rootPseudoMoves = new List<Move>(128);
+    private readonly List<int> moveOrderScores = new List<int>(128);
+    private readonly Dictionary<ulong, TranspositionEntry> transpositionTable = new Dictionary<ulong, TranspositionEntry>(1 << 16);
+    private List<Move>[] legalMoveBuffers;
+    private List<Move>[] pseudoMoveBuffers;
 
     public MinimaxAB(IEvaluator evaluator)
     {
@@ -37,32 +74,34 @@ public class MinimaxAB : ISearchEngine
 
     public SearchResult FindBestMove(BoardState state, PieceColor aiColor, EngineSettings settings)
     {
-        var legalMoves = MoveGenerator.getLegalMoves(state, aiColor);
-        if (legalMoves.Count == 0)
+        MoveGenerator.GetLegalMoves(state, aiColor, rootLegalMoves, rootPseudoMoves);
+        if (rootLegalMoves.Count == 0)
         {
             return new SearchResult(default, aiColor == PieceColor.Black ? POS_INF : NEG_INF, false, new SearchStats(0, 0, 0, 0, 0, 0f));
         }
 
+        int searchDepth = AdaptiveSearchDepth(state, settings.searchDepth, rootLegalMoves.Count);
+        EnsureSearchBuffers(searchDepth + 2);
         BeginTimedSearch(settings.maxThinkTimeSeconds);
         searchBias = new SearchBias(
             settings.evaluationWeights.drawPenalty,
             settings.evaluationWeights.repetitionPenalty);
 
-        Move bestMove = legalMoves[0];
+        Move bestMove = rootLegalMoves[0];
         int bestScore = evaluator.Evaluate(state);
         int completedDepth = 0;
         Move previousDepthBestMove = default;
         bool hasPreviousDepthBestMove = false;
 
-        for (int depth = 1; depth <= settings.searchDepth; depth++)
+        for (int depth = 1; depth <= searchDepth; depth++)
         {
             Move depthBestMove = default;
             int depthBestScore = aiColor == PieceColor.Black ? POS_INF : NEG_INF;
             bool hasDepthMove = false;
 
-            OrderMoves(state, legalMoves, previousDepthBestMove, hasPreviousDepthBestMove);
+            OrderMoves(state, rootLegalMoves, previousDepthBestMove, hasPreviousDepthBestMove);
 
-            foreach (Move move in legalMoves)
+            foreach (Move move in rootLegalMoves)
             {
                 int score = SearchChildMove(state, move, depth, NEG_INF, POS_INF);
 
@@ -96,13 +135,41 @@ public class MinimaxAB : ISearchEngine
         return new SearchResult(bestMove, bestScore, true, BuildStats(completedDepth));
     }
 
+    private static int AdaptiveSearchDepth(BoardState state, int baseDepth, int rootMoveCount)
+    {
+        int depth = Mathf.Max(1, baseDepth);
+        if (!Evaluator.IsEndgame(state))
+        {
+            return depth;
+        }
+
+        int bonus = 0;
+        if (rootMoveCount <= 8)
+        {
+            bonus = 3;
+        }
+        else if (rootMoveCount <= 16)
+        {
+            bonus = 2;
+        }
+        else if (rootMoveCount <= 24)
+        {
+            bonus = 1;
+        }
+
+        return depth + Mathf.Min(bonus, MaxAdaptiveDepthBonus);
+    }
+
     private void BeginTimedSearch(float maxThinkTimeSeconds)
     {
         timedOut = false;
         nodesVisited = 0;
         leafEvaluations = 0;
         alphaBetaCutoffs = 0;
+        transpositionHits = 0;
+        checkmatesFound = 0;
         searchStartTime = Time.realtimeSinceStartup;
+        transpositionTable.Clear();
 
         if (maxThinkTimeSeconds <= 0f)
         {
@@ -112,6 +179,22 @@ public class MinimaxAB : ISearchEngine
 
         hasDeadline = true;
         searchDeadline = Time.realtimeSinceStartup + maxThinkTimeSeconds;
+    }
+
+    private void EnsureSearchBuffers(int requiredCount)
+    {
+        if (legalMoveBuffers != null && legalMoveBuffers.Length >= requiredCount)
+        {
+            return;
+        }
+
+        legalMoveBuffers = new List<Move>[requiredCount];
+        pseudoMoveBuffers = new List<Move>[requiredCount];
+        for (int i = 0; i < requiredCount; i++)
+        {
+            legalMoveBuffers[i] = new List<Move>(128);
+            pseudoMoveBuffers[i] = new List<Move>(128);
+        }
     }
 
     private void EndTimedSearch()
@@ -124,50 +207,207 @@ public class MinimaxAB : ISearchEngine
         return new SearchStats(
             nodesVisited,
             leafEvaluations,
-            0,
+            transpositionHits,
             alphaBetaCutoffs,
             completedDepth,
-            (Time.realtimeSinceStartup - searchStartTime) * 1000f);
+            (Time.realtimeSinceStartup - searchStartTime) * 1000f,
+            checkmatesFound);
+    }
+
+    private bool TryReadTransposition(ulong positionKey, int depth, int alpha, int beta, out int score)
+    {
+        score = 0;
+        if (!transpositionTable.TryGetValue(positionKey, out TranspositionEntry entry) || entry.depth < depth)
+        {
+            return false;
+        }
+
+        switch (entry.bound)
+        {
+            case TranspositionBound.Exact:
+                score = entry.score;
+                transpositionHits++;
+                return true;
+            case TranspositionBound.Lower:
+                if (entry.score >= beta)
+                {
+                    score = entry.score;
+                    transpositionHits++;
+                    return true;
+                }
+                break;
+            case TranspositionBound.Upper:
+                if (entry.score <= alpha)
+                {
+                    score = entry.score;
+                    transpositionHits++;
+                    return true;
+                }
+                break;
+        }
+
+        return false;
+    }
+
+    private void StoreTransposition(
+        ulong positionKey,
+        int depth,
+        int score,
+        Move bestMove,
+        bool hasBestMove,
+        TranspositionBound bound)
+    {
+        if (timedOut)
+        {
+            return;
+        }
+
+        if (transpositionTable.TryGetValue(positionKey, out TranspositionEntry existing) && existing.depth > depth)
+        {
+            return;
+        }
+
+        if (!transpositionTable.ContainsKey(positionKey) && transpositionTable.Count >= MaxTranspositionEntries)
+        {
+            return;
+        }
+
+        transpositionTable[positionKey] = new TranspositionEntry(depth, score, bestMove, hasBestMove, bound);
+    }
+
+    private static TranspositionBound BoundFromScore(int score, int alpha, int beta)
+    {
+        if (score <= alpha)
+        {
+            return TranspositionBound.Upper;
+        }
+
+        if (score >= beta)
+        {
+            return TranspositionBound.Lower;
+        }
+
+        return TranspositionBound.Exact;
+    }
+
+    private bool TryGetStoredBestMove(BoardState state, out Move bestMove)
+    {
+        return TryGetStoredBestMove(HashPosition(state), out bestMove);
+    }
+
+    private bool TryGetStoredBestMove(ulong positionKey, out Move bestMove)
+    {
+        if (transpositionTable.TryGetValue(positionKey, out TranspositionEntry entry) && entry.hasBestMove)
+        {
+            bestMove = entry.bestMove;
+            return true;
+        }
+
+        bestMove = default;
+        return false;
+    }
+
+    private static ulong HashPosition(BoardState state)
+    {
+        unchecked
+        {
+            const ulong offset = 14695981039346656037UL;
+            const ulong prime = 1099511628211UL;
+            ulong hash = offset;
+
+            for (int square = 0; square < state.board.Length; square++)
+            {
+                hash ^= (ulong)(state.board[square] + 31 + (square * 17));
+                hash *= prime;
+            }
+
+            hash ^= (ulong)((int)state.currentTurn + 101);
+            hash *= prime;
+            hash ^= (ulong)((int)state.castlingRights + 211);
+            hash *= prime;
+            hash ^= (ulong)(state.enPassantTarget + 409);
+            hash *= prime;
+
+            return hash;
+        }
     }
 
     private int Search(BoardState state, int depth, int alpha, int beta)
     {
         nodesVisited++;
 
-        if (hasDeadline && Time.realtimeSinceStartup >= searchDeadline)
+        if (hasDeadline &&
+            (nodesVisited & 2047) == 0 &&
+            Time.realtimeSinceStartup >= searchDeadline)
         {
             timedOut = true;
             return 0;
         }
 
-        if (depth == 0)
+        int bufferIndex = Mathf.Clamp(depth, 0, legalMoveBuffers.Length - 1);
+        int originalAlpha = alpha;
+        int originalBeta = beta;
+        ulong positionKey = HashPosition(state);
+
+        if (TryReadTransposition(positionKey, depth, alpha, beta, out int cachedScore))
         {
-            leafEvaluations++;
-            return evaluator.Evaluate(state);
+            return cachedScore;
         }
 
-        var legalMoves = MoveGenerator.getLegalMoves(state, state.currentTurn);
-        OrderMoves(state, legalMoves, default, false);
+        if (depth == 0)
+        {
+            if (!MoveGenerator.HasAnyLegalMove(state, state.currentTurn, pseudoMoveBuffers[bufferIndex]))
+            {
+                if (MoveGenerator.isInCheck(state, state.currentTurn))
+                {
+                    checkmatesFound++;
+                    int mateScore = state.currentTurn == PieceColor.White
+                        ? -MateScore - depth
+                        : MateScore + depth;
+                    StoreTransposition(positionKey, depth, mateScore, default, false, TranspositionBound.Exact);
+                    return mateScore;
+                }
+
+                int drawScore = DrawPenaltyForSideToMove(state.currentTurn);
+                StoreTransposition(positionKey, depth, drawScore, default, false, TranspositionBound.Exact);
+                return drawScore;
+            }
+
+            leafEvaluations++;
+            int staticScore = evaluator.Evaluate(state);
+            StoreTransposition(positionKey, depth, staticScore, default, false, TranspositionBound.Exact);
+            return staticScore;
+        }
+
+        List<Move> legalMoves = legalMoveBuffers[bufferIndex];
+        List<Move> pseudoMoves = pseudoMoveBuffers[bufferIndex];
+        MoveGenerator.GetLegalMoves(state, state.currentTurn, legalMoves, pseudoMoves);
 
         if (legalMoves.Count == 0)
         {
-            int terminalScore;
             if (MoveGenerator.isInCheck(state, state.currentTurn))
             {
-                terminalScore = state.currentTurn == PieceColor.White
+                checkmatesFound++;
+                int mateScore = state.currentTurn == PieceColor.White
                     ? -MateScore - depth
                     : MateScore + depth;
-            }
-            else
-            {
-                terminalScore = DrawPenaltyForSideToMove(state.currentTurn);
+                StoreTransposition(positionKey, depth, mateScore, default, false, TranspositionBound.Exact);
+                return mateScore;
             }
 
-            return terminalScore;
+            int drawScore = DrawPenaltyForSideToMove(state.currentTurn);
+            StoreTransposition(positionKey, depth, drawScore, default, false, TranspositionBound.Exact);
+            return drawScore;
         }
+
+        Move preferredMove = default;
+        bool hasPreferredMove = TryGetStoredBestMove(positionKey, out preferredMove);
+        OrderMoves(state, legalMoves, preferredMove, hasPreferredMove);
 
         bool maximizing = state.currentTurn == PieceColor.White;
         int bestScore = maximizing ? NEG_INF : POS_INF;
+        Move bestMove = default;
+        bool hasBestMove = false;
 
         foreach (var move in legalMoves)
         {
@@ -181,6 +421,8 @@ public class MinimaxAB : ISearchEngine
             if (IsBetterScore(eval, bestScore, maximizing))
             {
                 bestScore = eval;
+                bestMove = move;
+                hasBestMove = true;
             }
 
             if (maximizing)
@@ -199,6 +441,14 @@ public class MinimaxAB : ISearchEngine
             }
         }
 
+        StoreTransposition(
+            positionKey,
+            depth,
+            bestScore,
+            bestMove,
+            hasBestMove,
+            BoundFromScore(bestScore, originalAlpha, originalBeta));
+
         return bestScore;
     }
 
@@ -214,7 +464,7 @@ public class MinimaxAB : ISearchEngine
             return 0;
         }
 
-        return ApplyImmediateReversalPenalty(state, move, eval);
+        return ApplyMoveHistoryPenalty(state, move, eval);
     }
 
     private static bool IsBetterScore(int score, int bestScore, bool maximizing)
@@ -227,14 +477,21 @@ public class MinimaxAB : ISearchEngine
         return SignedPenaltyForSideToMove(sideToMove, searchBias.drawPenalty);
     }
 
-    private int ApplyImmediateReversalPenalty(BoardState state, Move move, int evaluation)
+    private int ApplyMoveHistoryPenalty(BoardState state, Move move, int evaluation)
     {
-        if (!IsImmediateReversal(state, move))
+        PieceColor mover = state.currentTurn;
+
+        if (IsImmediateReversal(state, move))
         {
-            return evaluation;
+            evaluation += SignedPenaltyAgainstMover(mover, searchBias.immediateReversalPenalty);
         }
 
-        return evaluation + SignedPenaltyAgainstMover(state.currentTurn, searchBias.immediateReversalPenalty);
+        if (IsOwnPreviousMoveReversal(state, mover, move))
+        {
+            evaluation += SignedPenaltyAgainstMover(mover, searchBias.ownReversalPenalty);
+        }
+
+        return evaluation;
     }
 
     private static bool IsImmediateReversal(BoardState state, Move move)
@@ -250,6 +507,22 @@ public class MinimaxAB : ISearchEngine
             && move.promotionType == PieceType.None
             && !move.isCastling
             && !move.isEnPassant;
+    }
+
+    private static bool IsOwnPreviousMoveReversal(BoardState state, PieceColor mover, Move move)
+    {
+        if (move.isCapture || move.isPromotion || move.isCastling || move.isEnPassant)
+        {
+            return false;
+        }
+
+        if (!state.TryGetLastMoveForColor(mover, out Move previousOwnMove))
+        {
+            return false;
+        }
+
+        return move.from == previousOwnMove.to
+            && move.to == previousOwnMove.from;
     }
 
     private static int SignedPenaltyAgainstMover(PieceColor mover, int penalty)
@@ -282,7 +555,28 @@ public class MinimaxAB : ISearchEngine
 
     private void OrderMoves(BoardState state, List<Move> moves, Move preferredMove, bool hasPreferredMove)
     {
-        moves.Sort((a, b) => ScoreMove(state, b, preferredMove, hasPreferredMove).CompareTo(ScoreMove(state, a, preferredMove, hasPreferredMove)));
+        moveOrderScores.Clear();
+        for (int i = 0; i < moves.Count; i++)
+        {
+            moveOrderScores.Add(ScoreMove(state, moves[i], preferredMove, hasPreferredMove));
+        }
+
+        for (int i = 1; i < moves.Count; i++)
+        {
+            Move move = moves[i];
+            int score = moveOrderScores[i];
+            int j = i - 1;
+
+            while (j >= 0 && moveOrderScores[j] < score)
+            {
+                moves[j + 1] = moves[j];
+                moveOrderScores[j + 1] = moveOrderScores[j];
+                j--;
+            }
+
+            moves[j + 1] = move;
+            moveOrderScores[j + 1] = score;
+        }
     }
 
     private int ScoreMove(BoardState state, Move move, Move preferredMove, bool hasPreferredMove)

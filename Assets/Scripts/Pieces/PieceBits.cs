@@ -40,18 +40,4 @@ public static class PieceBits
     {
         return piece == None;
     }
-
-    public static int GetValue(int piece)
-    {
-        switch (GetType(piece))
-        {
-            case PieceType.Pawn: return 100;
-            case PieceType.Knight: return 320;
-            case PieceType.Bishop: return 330;
-            case PieceType.Rook: return 500;
-            case PieceType.Queen: return 900;
-            case PieceType.King: return 20000;
-            default: return 0;
-        }
-    }
 }

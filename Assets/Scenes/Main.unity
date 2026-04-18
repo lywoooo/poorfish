@@ -277,7 +277,7 @@ MonoBehaviour:
     type: 3}
   darkColor: {r: 0.70980394, g: 0.53333336, b: 0.3882353, a: 1}
   lightColor: {r: 0.9411765, g: 0.8509804, b: 0.70980394, a: 1}
-  frameColor: {r: 0.18, g: 0.13, b: 0.09, a: 0.96}
+  frameColor: {r: 0.16981131, g: 0.16981131, b: 0.16981131, a: 0.96}
 --- !u!114 &516697442
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -331,9 +331,12 @@ MonoBehaviour:
     evaluationWeights:
       materialWeight: 100
       pieceSquareWeight: 100
-      mobilityWeight: 10
+      mobilityWeight: 0
       drawPenalty: 60
       repetitionPenalty: 45
+      endgameMateWeight: 100
+      kingEdgeWeight: 80
+      kingDistanceWeight: 20
 --- !u!114 &516697446
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -354,14 +357,17 @@ MonoBehaviour:
   fallbackSettings:
     profileName: Baseline
     searchDepth: 6
-    maxThinkTimeSeconds: 1.5
+    maxThinkTimeSeconds: 100
     logSearchStats: 1
     evaluationWeights:
       materialWeight: 100
       pieceSquareWeight: 100
-      mobilityWeight: 10
+      mobilityWeight: 0
       drawPenalty: 60
       repetitionPenalty: 45
+      endgameMateWeight: 100
+      kingEdgeWeight: 80
+      kingDistanceWeight: 20
 --- !u!114 &516697447
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -436,6 +442,7 @@ MonoBehaviour:
     type: 3}
   blackRookSprite: {fileID: 908599678, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
   blackPawnSprite: {fileID: -5830143, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
+  loadFENString: 
 --- !u!4 &516697452
 Transform:
   m_ObjectHideFlags: 0

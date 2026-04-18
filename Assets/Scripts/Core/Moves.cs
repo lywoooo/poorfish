@@ -26,7 +26,8 @@ public partial class GameManager
         move = default;
         int destinationSquare = BoardState.SquareIndex(destination);
 
-        foreach (Move legalMove in LegalMovesFromPiece(pieceObject))
+        PopulateLegalMovesFromPiece(pieceObject);
+        foreach (Move legalMove in moveQueryLegalMoves)
         {
             if (legalMove.to == destinationSquare)
             {
@@ -40,26 +41,28 @@ public partial class GameManager
 
     private List<Move> LegalMovesFromPiece(GameObject pieceObject)
     {
+        PopulateLegalMovesFromPiece(pieceObject);
+        return new List<Move>(moveQueryLegalMoves);
+    }
+
+    private void PopulateLegalMovesFromPiece(GameObject pieceObject)
+    {
+        moveQueryLegalMoves.Clear();
+        moveQueryCandidateMoves.Clear();
+
         Vector2Int gridPoint = GridForPiece(pieceObject);
         if (gridPoint.x < 0)
         {
-            return new List<Move>(0);
+            return;
         }
 
-        int fromSquare = BoardState.SquareIndex(gridPoint);
         BoardState state = BoardState.boardSnapshot();
-        List<Move> legalMoves = MoveGenerator.getLegalMoves(state, CurrentTurnColor);
-        List<Move> pieceMoves = new List<Move>();
-
-        foreach (Move legalMove in legalMoves)
-        {
-            if (legalMove.from == fromSquare)
-            {
-                pieceMoves.Add(legalMove);
-            }
-        }
-
-        return pieceMoves;
+        MoveGenerator.GetLegalMovesFromSquare(
+            state,
+            CurrentTurnColor,
+            BoardState.SquareIndex(gridPoint),
+            moveQueryLegalMoves,
+            moveQueryCandidateMoves);
     }
 
     public void ApplyMove(Move move)
@@ -73,12 +76,13 @@ public partial class GameManager
         }
 
         Piece pieceComponent = GetPieceComponent(piece);
+        PieceColor pieceColor = GetPieceColor(piece);
         GameObject capturedPiece = null;
         EnPassantTarget = null;
 
         if (move.isEnPassant)
         {
-            int capturedPawnRow = destination.y + (GetPieceColor(piece) == PieceColor.White ? -1 : 1);
+            int capturedPawnRow = destination.y + (pieceColor == PieceColor.White ? -1 : 1);
             capturedPiece = PieceAtGrid(new Vector2Int(destination.x, capturedPawnRow));
         }
         else
@@ -91,7 +95,10 @@ public partial class GameManager
             CapturePiece(capturedPiece);
         }
 
-        MarkCastlingRightsLost(pieceComponent.Type, GetPieceColor(piece), startGridPoint, includeKing: true);
+        bool resetsHalfmoveClock = pieceComponent.Type == PieceType.Pawn || capturedPiece != null;
+        HalfmoveClock = resetsHalfmoveClock ? 0 : HalfmoveClock + 1;
+
+        MarkCastlingRightsLost(pieceComponent.Type, pieceColor, startGridPoint, includeKing: true);
 
         if (pieceComponent.Type == PieceType.Pawn)
         {
@@ -124,8 +131,8 @@ public partial class GameManager
 
         if (pieceComponent.Type == PieceType.Pawn)
         {
-            bool whitePromotes = GetPieceColor(piece) == PieceColor.White && destination.y == 7;
-            bool blackPromotes = GetPieceColor(piece) == PieceColor.Black && destination.y == 0;
+            bool whitePromotes = pieceColor == PieceColor.White && destination.y == 7;
+            bool blackPromotes = pieceColor == PieceColor.Black && destination.y == 0;
             if (whitePromotes || blackPromotes)
             {
                 PromotePiece(piece, move.promotionType == PieceType.None ? PieceType.Queen : move.promotionType);
@@ -134,6 +141,17 @@ public partial class GameManager
 
         LastAppliedMove = move;
         HasLastAppliedMove = true;
+        if (pieceColor == PieceColor.White)
+        {
+            LastWhiteAppliedMove = move;
+            HasLastWhiteAppliedMove = true;
+        }
+        else
+        {
+            LastBlackAppliedMove = move;
+            HasLastBlackAppliedMove = true;
+        }
+
         MoveApplied?.Invoke(startGridPoint, destination);
     }
 }

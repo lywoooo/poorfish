@@ -251,6 +251,8 @@ public class CsvRecorder : MonoBehaviour
                 return;
             case GameResultType.DrawStalemate:
             case GameResultType.DrawInsufficientMaterial:
+            case GameResultType.DrawFiftyMoveRule:
+            case GameResultType.DrawThreefoldRepetition:
             case GameResultType.DrawOther:
             default:
                 draws++;

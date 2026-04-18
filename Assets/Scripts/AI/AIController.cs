@@ -15,7 +15,9 @@ public class AIController : MonoBehaviour
     private bool calculatingMove = false;
     private ISearchEngine searchEngine;
     private IEvaluator evaluator;
+    private OpeningBook openingBook;
     private EngineSettings activeSettings;
+    private readonly System.Collections.Generic.List<Move> legalMoveProbeBuffer = new System.Collections.Generic.List<Move>(32);
 
     void Update()
     {
@@ -47,6 +49,7 @@ public class AIController : MonoBehaviour
         activeSettings = GetActiveSettings();
         evaluator = new ConfigurableEvaluator(activeSettings.evaluationWeights, activeSettings.profileName + "_Evaluator");
         searchEngine = new MinimaxAB(evaluator);
+        openingBook = new OpeningBook();
     }
 
     private EngineSettings GetActiveSettings()
@@ -79,9 +82,8 @@ public class AIController : MonoBehaviour
         }
 
         BoardState liveState = BoardState.boardSnapshot();
-        var legalMoves = MoveGenerator.getLegalMoves(liveState, aiColorEnum);
 
-        if (legalMoves.Count == 0)
+        if (!MoveGenerator.HasAnyLegalMove(liveState, aiColorEnum, legalMoveProbeBuffer))
         {
             if (MoveGenerator.isInCheck(liveState, aiColorEnum))
             {
@@ -98,10 +100,25 @@ public class AIController : MonoBehaviour
             yield break;
         }
 
-        SearchResult result = searchEngine.FindBestMove(liveState, aiColorEnum, settings);
+        EngineStatsOverlay.ShowThinking(aiColorEnum, settings.profileName);
+
+        SearchResult result;
+        Move bookMove = default;
+        bool usedOpeningBook = openingBook != null && openingBook.TryGetBookMove(liveState, out bookMove);
+        if (usedOpeningBook)
+        {
+            result = new SearchResult(bookMove, 0, true, new SearchStats(0, 0, 0, 0, 0, 0f));
+        }
+        else
+        {
+            result = searchEngine.FindBestMove(liveState, aiColorEnum, settings);
+        }
+
         GameObject movedPiece = null;
 
         if(result.hasMove) {
+            EngineStatsOverlay.ShowResult(result, aiColorEnum, settings.profileName, evaluator.Name, usedOpeningBook);
+
             Vector2Int fromPos = result.bestMove.FromVector;
             Vector2Int toPos = result.bestMove.ToVector;
             movedPiece = gm.PieceAtGrid(fromPos);
@@ -114,10 +131,11 @@ public class AIController : MonoBehaviour
 
             Debug.Log(gm.currentPlayer.name + " (AI) [" + settings.profileName + "] played "
                 + fromPos + " to " + toPos
+                + (usedOpeningBook ? " from opening book" : "")
                 + " with evaluated score of " + result.bestScore
                 + " at depth " + result.stats.completedDepth);
 
-            if (settings.logSearchStats)
+            if (settings.logSearchStats && !usedOpeningBook)
             {
                 Debug.Log("Search stats [" + settings.profileName + "] "
                     + "nodes=" + result.stats.nodesVisited
@@ -186,7 +204,10 @@ public class AIController : MonoBehaviour
             && left.evaluationWeights.pieceSquareWeight == right.evaluationWeights.pieceSquareWeight
             && left.evaluationWeights.mobilityWeight == right.evaluationWeights.mobilityWeight
             && left.evaluationWeights.drawPenalty == right.evaluationWeights.drawPenalty
-            && left.evaluationWeights.repetitionPenalty == right.evaluationWeights.repetitionPenalty;
+            && left.evaluationWeights.repetitionPenalty == right.evaluationWeights.repetitionPenalty
+            && left.evaluationWeights.endgameMateWeight == right.evaluationWeights.endgameMateWeight
+            && left.evaluationWeights.kingEdgeWeight == right.evaluationWeights.kingEdgeWeight
+            && left.evaluationWeights.kingDistanceWeight == right.evaluationWeights.kingDistanceWeight;
     }
 
     public void ResetControllerState()

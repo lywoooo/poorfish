@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public interface IEvaluator
@@ -15,6 +16,9 @@ public struct EvaluationWeights
     public int mobilityWeight;
     public int drawPenalty;
     public int repetitionPenalty;
+    public int endgameMateWeight;
+    public int kingEdgeWeight;
+    public int kingDistanceWeight;
 
     public static EvaluationWeights Default => new EvaluationWeights
     {
@@ -22,7 +26,10 @@ public struct EvaluationWeights
         pieceSquareWeight = 100,
         mobilityWeight = 0,
         drawPenalty = 60,
-        repetitionPenalty = 45
+        repetitionPenalty = 45,
+        endgameMateWeight = 100,
+        kingEdgeWeight = 80,
+        kingDistanceWeight = 20
     };
 }
 
@@ -30,6 +37,10 @@ public sealed class ConfigurableEvaluator : IEvaluator
 {
     private readonly EvaluationWeights weights;
     private readonly string name;
+    private readonly List<Move> whiteMobilityMoves = new List<Move>(64);
+    private readonly List<Move> whiteMobilityCandidates = new List<Move>(64);
+    private readonly List<Move> blackMobilityMoves = new List<Move>(64);
+    private readonly List<Move> blackMobilityCandidates = new List<Move>(64);
 
     public ConfigurableEvaluator(EvaluationWeights weights, string name = "ConfigurableEvaluator")
     {
@@ -66,12 +77,24 @@ public sealed class ConfigurableEvaluator : IEvaluator
         int mobilityScore = 0;
         if (weights.mobilityWeight != 0)
         {
-            mobilityScore = MoveGenerator.getLegalMoves(state, PieceColor.White).Count - MoveGenerator.getLegalMoves(state, PieceColor.Black).Count;
+            MoveGenerator.GetLegalMoves(state, PieceColor.White, whiteMobilityMoves, whiteMobilityCandidates);
+            MoveGenerator.GetLegalMoves(state, PieceColor.Black, blackMobilityMoves, blackMobilityCandidates);
+            mobilityScore = whiteMobilityMoves.Count - blackMobilityMoves.Count;
+        }
+
+        int endgameScore = 0;
+        if (weights.endgameMateWeight != 0 && endgame)
+        {
+            endgameScore = Endgame.EvaluateMatePressure(
+                state,
+                weights.kingEdgeWeight,
+                weights.kingDistanceWeight);
         }
 
         return Scale(materialScore, weights.materialWeight)
             + Scale(pieceSquareScore, weights.pieceSquareWeight)
-            + Scale(mobilityScore, weights.mobilityWeight);
+            + Scale(mobilityScore, weights.mobilityWeight)
+            + Scale(endgameScore, weights.endgameMateWeight);
     }
 
     private static int Scale(int value, int weight)

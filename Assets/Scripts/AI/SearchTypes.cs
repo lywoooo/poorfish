@@ -5,6 +5,7 @@ public readonly struct SearchStats
     public readonly int transpositionHits;
     public readonly int alphaBetaCutoffs;
     public readonly int completedDepth;
+    public readonly int checkmatesFound;
     public readonly float elapsedMilliseconds;
 
     public SearchStats(
@@ -13,13 +14,15 @@ public readonly struct SearchStats
         int transpositionHits,
         int alphaBetaCutoffs,
         int completedDepth,
-        float elapsedMilliseconds)
+        float elapsedMilliseconds,
+        int checkmatesFound = 0)
     {
         this.nodesVisited = nodesVisited;
         this.leafEvaluations = leafEvaluations;
         this.transpositionHits = transpositionHits;
         this.alphaBetaCutoffs = alphaBetaCutoffs;
         this.completedDepth = completedDepth;
+        this.checkmatesFound = checkmatesFound;
         this.elapsedMilliseconds = elapsedMilliseconds;
     }
 }

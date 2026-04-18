@@ -21,7 +21,7 @@ public class ChessMatchCoordinator : MonoBehaviour
     [SerializeField] private ChessMatchMode matchMode = ChessMatchMode.HumanVsAI;
     [SerializeField] private HumanSide humanSide = HumanSide.White;
     [SerializeField] private bool recordAIVsAIToCsv = false;
-    [SerializeField] private string aiVsAiCsvFileName = "ai_vs_ai_matches.csv";
+    [SerializeField] private string aiVsAiCsvFileName = "matches.csv";
     [SerializeField] private bool runAIVsAIBatch = false;
     [SerializeField] private int aiVsAiBatchGameCount = 100;
     [SerializeField] private bool rerunStalematesInBatch = false;

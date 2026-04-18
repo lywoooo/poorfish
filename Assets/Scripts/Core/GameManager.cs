@@ -8,6 +8,8 @@ public enum GameResultType
     BlackWin,
     DrawStalemate,
     DrawInsufficientMaterial,
+    DrawFiftyMoveRule,
+    DrawThreefoldRepetition,
     DrawOther
 }
 
@@ -40,6 +42,9 @@ public partial class GameManager : MonoBehaviour
     private readonly Dictionary<GameObject, Piece> pieceComponentCache = new Dictionary<GameObject, Piece>(32);
     private readonly Dictionary<GameObject, PieceColor> pieceColors = new Dictionary<GameObject, PieceColor>(32);
     private readonly Dictionary<GameObject, Player> pieceOwners = new Dictionary<GameObject, Player>(32);
+    private readonly Dictionary<string, int> positionRepetitionCounts = new Dictionary<string, int>(256);
+    private readonly List<Move> moveQueryLegalMoves = new List<Move>(32);
+    private readonly List<Move> moveQueryCandidateMoves = new List<Move>(32);
 
     private Player white;
     private Player black;
@@ -52,6 +57,11 @@ public partial class GameManager : MonoBehaviour
     public GameResultType LastGameResultType { get; private set; }
     public bool HasLastAppliedMove { get; private set; }
     public Move LastAppliedMove { get; private set; }
+    public bool HasLastWhiteAppliedMove { get; private set; }
+    public Move LastWhiteAppliedMove { get; private set; }
+    public bool HasLastBlackAppliedMove { get; private set; }
+    public Move LastBlackAppliedMove { get; private set; }
+    public int HalfmoveClock { get; private set; }
     public PieceColor CurrentTurnColor => currentPlayer == white ? PieceColor.White : PieceColor.Black;
     public string CurrentTurnName => currentPlayer != null ? currentPlayer.name : string.Empty;
     public bool WhiteKingMoved { get; private set; }

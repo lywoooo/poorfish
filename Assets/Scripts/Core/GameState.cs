@@ -8,6 +8,7 @@ public partial class GameManager
         Player tempPlayer = currentPlayer;
         currentPlayer = otherPlayer;
         otherPlayer = tempPlayer;
+        RegisterCurrentPosition();
         EvaluateTurnState();
     }
 
@@ -59,8 +60,7 @@ public partial class GameManager
         }
 
         BoardState state = BoardState.boardSnapshot();
-        List<Move> legalMoves = MoveGenerator.getLegalMoves(state, CurrentTurnColor);
-        if (legalMoves.Count == 0)
+        if (!MoveGenerator.HasAnyLegalMove(state, CurrentTurnColor, moveQueryCandidateMoves))
         {
             if (MoveGenerator.isInCheck(state, CurrentTurnColor))
             {
@@ -78,7 +78,96 @@ public partial class GameManager
         if (HasInsufficientMaterial(state))
         {
             EndGame("Draw by insufficient material.", GameResultType.DrawInsufficientMaterial);
+            return;
         }
+
+        if (HalfmoveClock >= 100)
+        {
+            EndGame("Draw by 50-move rule.", GameResultType.DrawFiftyMoveRule);
+            return;
+        }
+
+        if (CurrentPositionRepetitionCount() >= 3)
+        {
+            EndGame("Draw by threefold repetition.", GameResultType.DrawThreefoldRepetition);
+        }
+    }
+
+    private void RegisterCurrentPosition()
+    {
+        string key = CurrentPositionKey();
+        if (positionRepetitionCounts.TryGetValue(key, out int count))
+        {
+            positionRepetitionCounts[key] = count + 1;
+            return;
+        }
+
+        positionRepetitionCounts[key] = 1;
+    }
+
+    private int CurrentPositionRepetitionCount()
+    {
+        return positionRepetitionCounts.TryGetValue(CurrentPositionKey(), out int count) ? count : 0;
+    }
+
+    private string CurrentPositionKey()
+    {
+        BoardState state = BoardState.boardSnapshot();
+        return PositionKey(state);
+    }
+
+    private static string PositionKey(BoardState state)
+    {
+        System.Text.StringBuilder builder = new System.Text.StringBuilder(96);
+
+        for (int square = 0; square < state.board.Length; square++)
+        {
+            if (square > 0)
+            {
+                builder.Append(',');
+            }
+
+            builder.Append(state.board[square]);
+        }
+
+        builder.Append('|');
+        builder.Append(state.currentTurn == PieceColor.White ? 'w' : 'b');
+        builder.Append('|');
+        builder.Append((int)state.castlingRights);
+        builder.Append('|');
+        builder.Append(EffectiveEnPassantTarget(state));
+
+        return builder.ToString();
+    }
+
+    private static int EffectiveEnPassantTarget(BoardState state)
+    {
+        if (state.enPassantTarget < 0)
+        {
+            return -1;
+        }
+
+        int targetCol = state.enPassantTarget % 8;
+        int targetRow = state.enPassantTarget / 8;
+        int pawnRow = state.currentTurn == PieceColor.White ? targetRow - 1 : targetRow + 1;
+
+        return HasPawnThatCanCaptureEnPassant(state, targetCol - 1, pawnRow) ||
+            HasPawnThatCanCaptureEnPassant(state, targetCol + 1, pawnRow)
+                ? state.enPassantTarget
+                : -1;
+    }
+
+    private static bool HasPawnThatCanCaptureEnPassant(BoardState state, int col, int row)
+    {
+        if (!BoardState.InBounds(col, row))
+        {
+            return false;
+        }
+
+        int piece = state.whatIsAt(col, row);
+        return !PieceBits.isEmpty(piece) &&
+            PieceBits.GetType(piece) == PieceType.Pawn &&
+            PieceBits.GetColor(piece) == state.currentTurn;
     }
 
     private bool HasInsufficientMaterial(BoardState state)

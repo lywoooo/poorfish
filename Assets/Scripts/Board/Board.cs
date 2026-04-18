@@ -27,7 +27,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+using System;
 using System.Collections.Generic;
+using JetBrains.Annotations;
 using UnityEngine;
 
 public class Board : MonoBehaviour
@@ -112,6 +114,51 @@ public class Board : MonoBehaviour
             spriteRenderer.sortingOrder = isDragging
                 ? draggingSortingOrder
                 : defaultSortingOrders[piece];
+        }
+    }
+
+    public int GetMaterial(BoardState state, PieceColor color)
+    {
+        int material = 0; 
+
+        for (int square = 0; square < state.board.Length; square++)
+        {
+            int piece = state.board[square];
+            PieceType type = PieceBits.GetType(piece);
+
+            if (CheckIfMaterial(piece, color) && type != PieceType.King)
+            {
+                material += Evaluator.GetMaterialValue(type);
+            }
+        }
+        return material;
+    }
+
+    public bool CheckSufficientPieces(BoardState state, PieceColor color)
+    {
+        for (int square = 0; square < state.board.Length; square++)
+        {
+            int piece = state.board[square];
+            PieceType type = PieceBits.GetType(piece);
+            if (CheckIfMaterial(piece, color) && (type == PieceType.Rook || type == PieceType.Queen))
+            {
+                return true;
+            }
+        }
+        return false; 
+    }
+
+    private static bool CheckIfMaterial(int piece, PieceColor color)
+    {
+        PieceType type = PieceBits.GetType(piece);
+
+        if (!PieceBits.isEmpty(piece) && PieceBits.GetColor(piece) == color)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
         }
     }
 
