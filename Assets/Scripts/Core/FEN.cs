@@ -10,11 +10,6 @@ public static class FEN
     half move clock and full move counter for 50 move draw rule: 100 50
     */
     
-    public static bool LoadFen(string fen, out BoardState state)
-    {
-        return TryLoadFen(fen, out state);
-    }
-
     public static bool TryLoadFen(string fen, out BoardState state)
     {
         state = new BoardState();

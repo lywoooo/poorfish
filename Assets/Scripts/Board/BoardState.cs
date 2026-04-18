@@ -91,11 +91,6 @@ public class BoardState
         }
     }
 
-    public void applyMove(Move move)
-    {
-        MakeMove(move);
-    }
-
     public MoveUndo MakeMove(Move move)
     {
         int piece = board[move.from];

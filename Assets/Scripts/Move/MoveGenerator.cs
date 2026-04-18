@@ -13,6 +13,13 @@ public static class MoveGenerator
         new Vector2Int(-1, -1), new Vector2Int(-1, 1)
     };
 
+    private static readonly Vector2Int[] kingDirections = {
+        new Vector2Int(0, 1), new Vector2Int(1, 1),
+        new Vector2Int(1, 0), new Vector2Int(1, -1),
+        new Vector2Int(0, -1), new Vector2Int(-1, -1),
+        new Vector2Int(-1, 0), new Vector2Int(-1, 1)
+    };
+
     private static readonly int[] knightXChange = { -1,  1,  2, -2,  2, -2,  1, -1 };
     private static readonly int[] knightYChange = {  2,  2,  1,  1, -1, -1, -2, -2 };
 
@@ -67,15 +74,7 @@ public static class MoveGenerator
             return true;
         }
 
-        foreach (var direction in bishopDirections)
-        {
-            if (IsEnemyPiece(state, kingPos.x + direction.x, kingPos.y + direction.y, opponentColor, PieceType.King))
-            {
-                return true;
-            }
-        }
-
-        foreach (var direction in rookDirections)
+        foreach (var direction in kingDirections)
         {
             if (IsEnemyPiece(state, kingPos.x + direction.x, kingPos.y + direction.y, opponentColor, PieceType.King))
             {
@@ -177,12 +176,7 @@ public static class MoveGenerator
     {
         var destinations = new List<Move>(10);
 
-        foreach (var direction in bishopDirections)
-        {
-            AddIfLegal(state, initialPos, color, initialPos.x + direction.x, initialPos.y + direction.y, destinations);
-        }
-
-        foreach (var direction in rookDirections)
+        foreach (var direction in kingDirections)
         {
             AddIfLegal(state, initialPos, color, initialPos.x + direction.x, initialPos.y + direction.y, destinations);
         }
