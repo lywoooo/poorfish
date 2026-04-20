@@ -79,6 +79,12 @@ public class MinimaxAB : ISearchEngine
             return new SearchResult(default, aiColor == PieceColor.Black ? POS_INF : NEG_INF, false, new SearchStats(0, 0, 0, 0, 0, 0f));
         }
 
+        if (TryFindCheckmateMove(state, aiColor, rootLegalMoves, rootPseudoMoves, out Move checkmateMove))
+        {
+            int mateScore = aiColor == PieceColor.White ? MateScore : -MateScore;
+            return new SearchResult(checkmateMove, mateScore, true, new SearchStats(rootLegalMoves.Count, 0, 0, 0, 0, 0f));
+        }
+
         int searchDepth = AdaptiveSearchDepth(state, settings.searchDepth, rootLegalMoves.Count);
         EnsureSearchBuffers(searchDepth + 2);
         BeginTimedSearch(settings.maxThinkTimeSeconds);
@@ -132,6 +138,36 @@ public class MinimaxAB : ISearchEngine
 
         EndTimedSearch();
         return new SearchResult(bestMove, bestScore, true, BuildStats(completedDepth));
+    }
+
+    private static bool TryFindCheckmateMove(
+        BoardState state,
+        PieceColor aiColor,
+        List<Move> legalMoves,
+        List<Move> candidateBuffer,
+        out Move checkmateMove)
+    {
+        PieceColor opponent = aiColor == PieceColor.White ? PieceColor.Black : PieceColor.White;
+
+        foreach (Move move in legalMoves)
+        {
+            BoardState.MoveUndo undo = state.MakeMove(move);
+            state.switchTurn();
+
+            bool isMate = MoveGenerator.isInCheck(state, opponent)
+                && !MoveGenerator.HasAnyLegalMove(state, opponent, candidateBuffer);
+
+            state.UnmakeMove(move, undo);
+
+            if (isMate)
+            {
+                checkmateMove = move;
+                return true;
+            }
+        }
+
+        checkmateMove = default;
+        return false;
     }
 
     private static int AdaptiveSearchDepth(BoardState state, int baseDepth, int rootMoveCount)

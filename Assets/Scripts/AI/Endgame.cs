@@ -4,10 +4,13 @@ using UnityEngine;
 public static class Endgame
 {
     private const int WinningThreshold = 500;
-    private const int LoneKingMobilityWeight = 70;
-    private const int BoxConfinementWeight = 45;
-    private const int SafeMajorPieceBonus = 80;
-    private const int HangingMajorPiecePenalty = 350;
+    private const int BoxWeight = 90;
+    private const int SupportWeight = 45;
+    private const int MobilityWeight = 80;
+    private const int SafeMajorPieceBonus = 120;
+    private const int HangingMajorPiecePenalty = 600;
+    private const int BadCheckPenalty = 300;
+    private const int StrongCheckBonus = 250;
     private static readonly List<Move> KingLegalMoveBuffer = new List<Move>(8);
     private static readonly List<Move> KingCandidateMoveBuffer = new List<Move>(8);
 
@@ -49,19 +52,19 @@ public static class Endgame
             return 0;
         }
 
-        int edgeScore = KingEdgeScore(losingKing) * kingEdgeWeight;
-        int distanceScore = KingDistanceScore(winningKing, losingKing) * kingDistanceWeight;
-        int score = edgeScore + distanceScore;
-
-        if (TryGetMajorMateInfo(state, winningSide, losingKing, out MajorMateInfo majorMate))
+        if (!TryGetMajorMateInfo(state, winningSide, losingKing, out MajorMateInfo majorMate))
         {
-            score += EvaluateMajorPieceMatePressure(
-                state,
-                losingSide,
-                winningKing,
-                losingKing,
-                majorMate);
+            return 0;
         }
+
+        int score = EvaluateMajorPieceMatePressure(
+            state,
+            losingSide,
+            winningKing,
+            losingKing,
+            majorMate,
+            kingEdgeWeight,
+            kingDistanceWeight);
 
         return winningSide == PieceColor.White ? score : -score;
     }
@@ -83,17 +86,23 @@ public static class Endgame
         PieceColor losingSide,
         Vector2Int winningKing,
         Vector2Int losingKing,
-        MajorMateInfo majorMate)
+        MajorMateInfo majorMate,
+        int kingEdgeWeight,
+        int kingDistanceWeight)
     {
-        int score = 0;
         int losingKingMoves = CountLegalKingMoves(state, losingSide, losingKing);
-        score += (8 - losingKingMoves) * LoneKingMobilityWeight;
-        score += BoxConfinementScore(majorMate, losingKing) * BoxConfinementWeight;
+        int score = 0;
+
+        score += KingEdgeScore(losingKing) * kingEdgeWeight;
+        score += KingDistanceScore(winningKing, losingKing) * kingDistanceWeight;
+        score += BoxConfinementScore(majorMate, losingKing) * BoxWeight;
+        score += KingSupportScore(winningKing, losingKing) * SupportWeight;
+        score += (8 - losingKingMoves) * MobilityWeight;
         score += MajorPieceSafetyScore(majorMate.square, winningKing, losingKing);
 
-        if (MoveGenerator.isInCheck(state, losingSide) && losingKingMoves > 0)
+        if (MoveGenerator.isInCheck(state, losingSide))
         {
-            score -= LoneKingMobilityWeight;
+            score += losingKingMoves <= 1 ? StrongCheckBonus : -BadCheckPenalty;
         }
 
         return score;
@@ -179,6 +188,11 @@ public static class Endgame
         }
 
         return strongestCut;
+    }
+
+    private static int KingSupportScore(Vector2Int winningKing, Vector2Int losingKing)
+    {
+        return 7 - ChebyshevDistance(winningKing, losingKing);
     }
 
     private static int MajorPieceSafetyScore(Vector2Int majorSquare, Vector2Int winningKing, Vector2Int losingKing)
