@@ -100,8 +100,6 @@ public class AIController : MonoBehaviour
             yield break;
         }
 
-        EngineStatsOverlay.ShowThinking(aiColorEnum, settings.profileName);
-
         SearchResult result;
         Move bookMove = default;
         bool usedOpeningBook = openingBook != null && openingBook.TryGetBookMove(liveState, out bookMove);
@@ -117,8 +115,6 @@ public class AIController : MonoBehaviour
         GameObject movedPiece = null;
 
         if(result.hasMove) {
-            EngineStatsOverlay.ShowResult(result, aiColorEnum, settings.profileName, evaluator.Name, usedOpeningBook);
-
             Vector2Int fromPos = result.bestMove.FromVector;
             Vector2Int toPos = result.bestMove.ToVector;
             movedPiece = gm.PieceAtGrid(fromPos);

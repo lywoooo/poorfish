@@ -53,9 +53,9 @@ public static class Endgame
         int distanceScore = KingDistanceScore(winningKing, losingKing) * kingDistanceWeight;
         int score = edgeScore + distanceScore;
 
-        if (TryGetLoneMajorMateInfo(state, winningSide, losingSide, out MajorMateInfo majorMate))
+        if (TryGetMajorMateInfo(state, winningSide, losingKing, out MajorMateInfo majorMate))
         {
-            score += EvaluateLoneKingMajorMate(
+            score += EvaluateMajorPieceMatePressure(
                 state,
                 losingSide,
                 winningKing,
@@ -78,7 +78,7 @@ public static class Endgame
         }
     }
 
-    private static int EvaluateLoneKingMajorMate(
+    private static int EvaluateMajorPieceMatePressure(
         BoardState state,
         PieceColor losingSide,
         Vector2Int winningKing,
@@ -99,20 +99,15 @@ public static class Endgame
         return score;
     }
 
-    private static bool TryGetLoneMajorMateInfo(
+    private static bool TryGetMajorMateInfo(
         BoardState state,
         PieceColor winningSide,
-        PieceColor losingSide,
+        Vector2Int losingKing,
         out MajorMateInfo majorMate)
     {
         majorMate = default;
+        int bestScore = int.MinValue;
 
-        if (GetNonKingMaterial(state, losingSide) != 0)
-        {
-            return false;
-        }
-
-        bool foundMajor = false;
         for (int square = 0; square < state.board.Length; square++)
         {
             int piece = state.board[square];
@@ -122,26 +117,27 @@ public static class Endgame
             }
 
             PieceType type = PieceBits.GetType(piece);
-            if (type == PieceType.King)
+            if (type != PieceType.Queen && type != PieceType.Rook)
             {
                 continue;
             }
 
-            if (type != PieceType.Queen && type != PieceType.Rook)
+            MajorMateInfo candidate = new MajorMateInfo(type, new Vector2Int(square % 8, square / 8));
+            int candidateScore = MajorMateCandidateScore(candidate, losingKing);
+            if (candidateScore > bestScore)
             {
-                return false;
+                bestScore = candidateScore;
+                majorMate = candidate;
             }
-
-            if (foundMajor)
-            {
-                return false;
-            }
-
-            foundMajor = true;
-            majorMate = new MajorMateInfo(type, new Vector2Int(square % 8, square / 8));
         }
 
-        return foundMajor;
+        return bestScore != int.MinValue;
+    }
+
+    private static int MajorMateCandidateScore(MajorMateInfo majorMate, Vector2Int losingKing)
+    {
+        int queenPreference = majorMate.type == PieceType.Queen ? 100 : 0;
+        return queenPreference + BoxConfinementScore(majorMate, losingKing);
     }
 
     private static int CountLegalKingMoves(BoardState state, PieceColor color, Vector2Int kingSquare)
@@ -243,10 +239,10 @@ public static class Endgame
 
     private static int KingEdgeScore(Vector2Int kingSquare)
     {
-        int distanceFromCenterFile = Mathf.Max(
+        int distanceFromCenterFile = Mathf.Min(
             Mathf.Abs(kingSquare.x - 3),
             Mathf.Abs(kingSquare.x - 4));
-        int distanceFromCenterRank = Mathf.Max(
+        int distanceFromCenterRank = Mathf.Min(
             Mathf.Abs(kingSquare.y - 3),
             Mathf.Abs(kingSquare.y - 4));
 

@@ -57,7 +57,6 @@ public class MinimaxAB : ISearchEngine
     private int leafEvaluations;
     private int alphaBetaCutoffs;
     private int transpositionHits;
-    private int checkmatesFound;
     private float searchStartTime;
     private SearchBias searchBias;
     private readonly List<Move> rootLegalMoves = new List<Move>(128);
@@ -167,7 +166,6 @@ public class MinimaxAB : ISearchEngine
         leafEvaluations = 0;
         alphaBetaCutoffs = 0;
         transpositionHits = 0;
-        checkmatesFound = 0;
         searchStartTime = Time.realtimeSinceStartup;
         transpositionTable.Clear();
 
@@ -210,8 +208,7 @@ public class MinimaxAB : ISearchEngine
             transpositionHits,
             alphaBetaCutoffs,
             completedDepth,
-            (Time.realtimeSinceStartup - searchStartTime) * 1000f,
-            checkmatesFound);
+            (Time.realtimeSinceStartup - searchStartTime) * 1000f);
     }
 
     private bool TryReadTransposition(ulong positionKey, int depth, int alpha, int beta, out int score)
@@ -360,7 +357,6 @@ public class MinimaxAB : ISearchEngine
             {
                 if (MoveGenerator.isInCheck(state, state.currentTurn))
                 {
-                    checkmatesFound++;
                     int mateScore = state.currentTurn == PieceColor.White
                         ? -MateScore - depth
                         : MateScore + depth;
@@ -387,7 +383,6 @@ public class MinimaxAB : ISearchEngine
         {
             if (MoveGenerator.isInCheck(state, state.currentTurn))
             {
-                checkmatesFound++;
                 int mateScore = state.currentTurn == PieceColor.White
                     ? -MateScore - depth
                     : MateScore + depth;
