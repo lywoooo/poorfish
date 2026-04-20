@@ -4,7 +4,10 @@ using UnityEngine;
 public static class Endgame
 {
     private const int WinningThreshold = 500;
-    private const int BoxWeight = 90;
+    private const int MaxDefenderMaterialForMatePressure = 400;
+    private const int EdgeFirstWeight = 220;
+    private const int CornerWeight = 90;
+    private const int BoxWeight = 120;
     private const int SupportWeight = 45;
     private const int MobilityWeight = 80;
     private const int SafeMajorPieceBonus = 120;
@@ -34,13 +37,16 @@ public static class Endgame
         PieceColor losingSide = winningSide == PieceColor.White
             ? PieceColor.Black
             : PieceColor.White;
+        int losingMaterial = winningSide == PieceColor.White
+            ? blackMaterial
+            : whiteMaterial;
 
         if (!HasBasicMatingMaterial(state, winningSide))
         {
             return 0;
         }
 
-        if (GetNonKingMaterial(state, losingSide) > 0)
+        if (losingMaterial > MaxDefenderMaterialForMatePressure)
         {
             return 0;
         }
@@ -52,7 +58,8 @@ public static class Endgame
             return 0;
         }
 
-        if (!TryGetMajorMateInfo(state, winningSide, losingKing, out MajorMateInfo majorMate))
+        Vector2Int targetCorner = TargetCorner(winningKing, losingKing);
+        if (!TryGetMajorMateInfo(state, winningSide, losingKing, targetCorner, out MajorMateInfo majorMate))
         {
             return 0;
         }
@@ -63,6 +70,7 @@ public static class Endgame
             winningKing,
             losingKing,
             majorMate,
+            targetCorner,
             kingEdgeWeight,
             kingDistanceWeight);
 
@@ -87,15 +95,17 @@ public static class Endgame
         Vector2Int winningKing,
         Vector2Int losingKing,
         MajorMateInfo majorMate,
+        Vector2Int targetCorner,
         int kingEdgeWeight,
         int kingDistanceWeight)
     {
         int losingKingMoves = CountLegalKingMoves(state, losingSide, losingKing);
         int score = 0;
 
-        score += KingEdgeScore(losingKing) * kingEdgeWeight;
+        score += KingEdgeScore(losingKing) * (kingEdgeWeight + EdgeFirstWeight);
+        score += CornerScore(losingKing, targetCorner) * CornerWeight;
         score += KingDistanceScore(winningKing, losingKing) * kingDistanceWeight;
-        score += BoxConfinementScore(majorMate, losingKing) * BoxWeight;
+        score += BoxConfinementScore(majorMate, losingKing, targetCorner) * BoxWeight;
         score += KingSupportScore(winningKing, losingKing) * SupportWeight;
         score += (8 - losingKingMoves) * MobilityWeight;
         score += MajorPieceSafetyScore(majorMate.square, winningKing, losingKing);
@@ -112,6 +122,7 @@ public static class Endgame
         BoardState state,
         PieceColor winningSide,
         Vector2Int losingKing,
+        Vector2Int targetCorner,
         out MajorMateInfo majorMate)
     {
         majorMate = default;
@@ -132,7 +143,7 @@ public static class Endgame
             }
 
             MajorMateInfo candidate = new MajorMateInfo(type, new Vector2Int(square % 8, square / 8));
-            int candidateScore = MajorMateCandidateScore(candidate, losingKing);
+            int candidateScore = MajorMateCandidateScore(candidate, losingKing, targetCorner);
             if (candidateScore > bestScore)
             {
                 bestScore = candidateScore;
@@ -143,10 +154,10 @@ public static class Endgame
         return bestScore != int.MinValue;
     }
 
-    private static int MajorMateCandidateScore(MajorMateInfo majorMate, Vector2Int losingKing)
+    private static int MajorMateCandidateScore(MajorMateInfo majorMate, Vector2Int losingKing, Vector2Int targetCorner)
     {
         int queenPreference = majorMate.type == PieceType.Queen ? 100 : 0;
-        return queenPreference + BoxConfinementScore(majorMate, losingKing);
+        return queenPreference + BoxConfinementScore(majorMate, losingKing, targetCorner);
     }
 
     private static int CountLegalKingMoves(BoardState state, PieceColor color, Vector2Int kingSquare)
@@ -160,25 +171,10 @@ public static class Endgame
         return KingLegalMoveBuffer.Count;
     }
 
-    private static int BoxConfinementScore(MajorMateInfo majorMate, Vector2Int losingKing)
+    private static int BoxConfinementScore(MajorMateInfo majorMate, Vector2Int losingKing, Vector2Int targetCorner)
     {
-        int fileCutScore = 0;
-        if (majorMate.square.x != losingKing.x)
-        {
-            int boxWidth = losingKing.x < majorMate.square.x
-                ? majorMate.square.x
-                : 7 - majorMate.square.x;
-            fileCutScore = 7 - boxWidth;
-        }
-
-        int rankCutScore = 0;
-        if (majorMate.square.y != losingKing.y)
-        {
-            int boxHeight = losingKing.y < majorMate.square.y
-                ? majorMate.square.y
-                : 7 - majorMate.square.y;
-            rankCutScore = 7 - boxHeight;
-        }
+        int fileCutScore = CutTowardCornerScore(majorMate.square.x, losingKing.x, targetCorner.x);
+        int rankCutScore = CutTowardCornerScore(majorMate.square.y, losingKing.y, targetCorner.y);
 
         int strongestCut = Mathf.Max(fileCutScore, rankCutScore);
         if (majorMate.type == PieceType.Queen)
@@ -188,6 +184,46 @@ public static class Endgame
         }
 
         return strongestCut;
+    }
+
+    private static int CutTowardCornerScore(int majorLine, int kingLine, int cornerLine)
+    {
+        if (cornerLine == 0)
+        {
+            return majorLine > kingLine ? 7 - majorLine : 0;
+        }
+
+        return majorLine < kingLine ? majorLine : 0;
+    }
+
+    private static Vector2Int TargetCorner(Vector2Int winningKing, Vector2Int losingKing)
+    {
+        Vector2Int bestCorner = new Vector2Int(0, 0);
+        int bestScore = int.MaxValue;
+
+        for (int file = 0; file <= 7; file += 7)
+        {
+            for (int rank = 0; rank <= 7; rank += 7)
+            {
+                Vector2Int corner = new Vector2Int(file, rank);
+                int score = ManhattanDistance(losingKing, corner) * 4
+                    + ManhattanDistance(winningKing, corner);
+
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    bestCorner = corner;
+                }
+            }
+        }
+
+        return bestCorner;
+    }
+
+    private static int CornerScore(Vector2Int kingSquare, Vector2Int targetCorner)
+    {
+        int distance = Mathf.Abs(kingSquare.x - targetCorner.x) + Mathf.Abs(kingSquare.y - targetCorner.y);
+        return 14 - distance;
     }
 
     private static int KingSupportScore(Vector2Int winningKing, Vector2Int losingKing)
@@ -265,11 +301,12 @@ public static class Endgame
 
     private static int KingDistanceScore(Vector2Int winningKing, Vector2Int losingKing)
     {
-        int fileDistance = Mathf.Abs(winningKing.x - losingKing.x);
-        int rankDistance = Mathf.Abs(winningKing.y - losingKing.y);
-        int kingDistance = fileDistance + rankDistance;
+        return 14 - ManhattanDistance(winningKing, losingKing);
+    }
 
-        return 14 - kingDistance;
+    private static int ManhattanDistance(Vector2Int a, Vector2Int b)
+    {
+        return Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y);
     }
 
     private static int ChebyshevDistance(Vector2Int a, Vector2Int b)

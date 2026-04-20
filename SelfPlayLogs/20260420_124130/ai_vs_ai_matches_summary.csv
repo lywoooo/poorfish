@@ -1,0 +1,2 @@
+batch_id,timestamp_utc,white_profile,black_profile,target_completed_games,completed_games,actual_games_played,white_wins,black_wins,draws
+20260420_124130,2026-04-20T12:42:31.8392540Z,Baseline,Baseline,1,1,1,0,0,1

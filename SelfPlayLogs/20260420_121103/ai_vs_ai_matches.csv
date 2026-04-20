@@ -1,0 +1,12 @@
+batch_id,game_number,match_id,timestamp_utc,white_profile,black_profile,move_number,player_color,piece_type,from_square,to_square,promotion,result,result_type
+20260420_121103,1,20260420_121103_g1,2026-04-20T12:11:12.9430380Z,Baseline,Baseline,1,White,Queen,a7,a8,Queen,white wins by checkmate.,WhiteWin
+20260420_121103,1,20260420_121103_g1,2026-04-20T12:11:12.9430380Z,Baseline,Baseline,2,Black,King,a5,b5,,white wins by checkmate.,WhiteWin
+20260420_121103,1,20260420_121103_g1,2026-04-20T12:11:12.9430380Z,Baseline,Baseline,3,White,Queen,a8,a3,,white wins by checkmate.,WhiteWin
+20260420_121103,1,20260420_121103_g1,2026-04-20T12:11:12.9430380Z,Baseline,Baseline,4,Black,King,b5,b6,,white wins by checkmate.,WhiteWin
+20260420_121103,1,20260420_121103_g1,2026-04-20T12:11:12.9430380Z,Baseline,Baseline,5,White,Rook,c1,c2,,white wins by checkmate.,WhiteWin
+20260420_121103,1,20260420_121103_g1,2026-04-20T12:11:12.9430380Z,Baseline,Baseline,6,Black,King,b6,b5,,white wins by checkmate.,WhiteWin
+20260420_121103,1,20260420_121103_g1,2026-04-20T12:11:12.9430380Z,Baseline,Baseline,7,White,Rook,c2,c7,,white wins by checkmate.,WhiteWin
+20260420_121103,1,20260420_121103_g1,2026-04-20T12:11:12.9430380Z,Baseline,Baseline,8,Black,King,b5,b6,,white wins by checkmate.,WhiteWin
+20260420_121103,1,20260420_121103_g1,2026-04-20T12:11:12.9430380Z,Baseline,Baseline,9,White,Queen,a3,c5,,white wins by checkmate.,WhiteWin
+20260420_121103,1,20260420_121103_g1,2026-04-20T12:11:12.9430380Z,Baseline,Baseline,10,Black,King,b6,a6,,white wins by checkmate.,WhiteWin
+20260420_121103,1,20260420_121103_g1,2026-04-20T12:11:12.9430380Z,Baseline,Baseline,11,White,Rook,c7,c6,,white wins by checkmate.,WhiteWin
