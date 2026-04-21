@@ -56,6 +56,106 @@ public static class FEN
         return true;
     }
 
+    public static string ToFen(BoardState state, int fullMoveNumber = 1)
+    {
+        return BuildPiecePlacement(state)
+            + " "
+            + (state.currentTurn == PieceColor.White ? "w" : "b")
+            + " "
+            + CastlingToFen(state.castlingRights)
+            + " "
+            + SquareToFen(state.enPassantTarget)
+            + " "
+            + state.halfmoveClock
+            + " "
+            + (fullMoveNumber < 1 ? 1 : fullMoveNumber);
+    }
+
+    private static string BuildPiecePlacement(BoardState state)
+    {
+        System.Text.StringBuilder builder = new System.Text.StringBuilder(64);
+
+        for (int row = 7; row >= 0; row--)
+        {
+            int emptyCount = 0;
+            for (int col = 0; col < 8; col++)
+            {
+                int piece = state.board[BoardState.SquareIndex(col, row)];
+                if (PieceBits.isEmpty(piece))
+                {
+                    emptyCount++;
+                    continue;
+                }
+
+                if (emptyCount > 0)
+                {
+                    builder.Append(emptyCount);
+                    emptyCount = 0;
+                }
+
+                builder.Append(PieceToFen(piece));
+            }
+
+            if (emptyCount > 0)
+            {
+                builder.Append(emptyCount);
+            }
+
+            if (row > 0)
+            {
+                builder.Append('/');
+            }
+        }
+
+        return builder.ToString();
+    }
+
+    private static char PieceToFen(int piece)
+    {
+        char symbol;
+        switch (PieceBits.GetType(piece))
+        {
+            case PieceType.Pawn: symbol = 'p'; break;
+            case PieceType.Knight: symbol = 'n'; break;
+            case PieceType.Bishop: symbol = 'b'; break;
+            case PieceType.Rook: symbol = 'r'; break;
+            case PieceType.Queen: symbol = 'q'; break;
+            case PieceType.King: symbol = 'k'; break;
+            default: symbol = '1'; break;
+        }
+
+        return PieceBits.GetColor(piece) == PieceColor.White
+            ? char.ToUpperInvariant(symbol)
+            : symbol;
+    }
+
+    private static string CastlingToFen(CastlingRights rights)
+    {
+        if (rights == CastlingRights.None)
+        {
+            return "-";
+        }
+
+        System.Text.StringBuilder builder = new System.Text.StringBuilder(4);
+        if ((rights & CastlingRights.WhiteKingside) != 0) builder.Append('K');
+        if ((rights & CastlingRights.WhiteQueenside) != 0) builder.Append('Q');
+        if ((rights & CastlingRights.BlackKingside) != 0) builder.Append('k');
+        if ((rights & CastlingRights.BlackQueenside) != 0) builder.Append('q');
+        return builder.Length == 0 ? "-" : builder.ToString();
+    }
+
+    private static string SquareToFen(int square)
+    {
+        if (square < 0)
+        {
+            return "-";
+        }
+
+        char file = (char)('a' + (square % 8));
+        int rank = (square / 8) + 1;
+        return file + rank.ToString();
+    }
+
     private static bool TryParsePieces(string placement, BoardState state)
     {
         string[] ranks = placement.Split('/');

@@ -1,0 +1,2 @@
+batch_id,game_id,game_number,timestamp_utc,engine_build,white_engine,black_engine,starting_fen,total_plies,total_moves,result,termination_reason,result_type
+20260421_121823,20260421_121823_g1,1,2026-04-21T12:20:33.9955150Z,1.0,Baseline,Baseline,3k4/2n2B2/1KP5/2B2p2/5b1p/7P/8/8 b - - 0 1,87,44,1/2-1/2,Draw by threefold repetition.,DrawThreefoldRepetition

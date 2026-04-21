@@ -7,6 +7,26 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class CsvRecorder : MonoBehaviour
 {
+    private static readonly string[] GameCsvColumns =
+    {
+        "batch_id", "game_id", "game_number", "timestamp_utc", "engine_build", "white_engine", "black_engine",
+        "starting_fen", "total_plies", "total_moves", "result", "termination_reason", "result_type"
+    };
+
+    private static readonly string[] PlyCsvColumns =
+    {
+        "game_id", "ply", "move_number", "side_to_move", "move_uci", "piece_type", "from_square",
+        "to_square", "promotion", "evaluation", "depth", "nodes_searched", "leaf_evaluations",
+        "transposition_hits", "alpha_beta_cutoffs", "time_ms", "search_algorithm", "evaluation_version",
+        "used_opening_book", "fen_after"
+    };
+
+    private static readonly string[] SummaryCsvColumns =
+    {
+        "batch_id", "timestamp_utc", "white_profile", "black_profile", "target_completed_games",
+        "completed_games", "actual_games_played", "white_wins", "black_wins", "draws"
+    };
+
     private readonly List<RecordedMove> recordedMoves = new List<RecordedMove>(256);
     private GameManager gameManager;
     private bool recordingEnabled;
@@ -22,15 +42,40 @@ public class CsvRecorder : MonoBehaviour
     private int blackWins;
     private int draws;
     private int moveNumber;
+    private string startingFen;
+    private PendingEngineMove pendingEngineMove;
 
     private struct RecordedMove
     {
+        public int ply;
         public int moveNumber;
-        public string playerColor;
+        public string sideToMove;
+        public string moveUci;
+        public string fenAfter;
         public string pieceType;
         public string from;
         public string to;
         public string promotion;
+        public string searchAlgorithm;
+        public string evaluationVersion;
+        public int depth;
+        public int evaluation;
+        public int nodesSearched;
+        public int leafEvaluations;
+        public int transpositionHits;
+        public int alphaBetaCutoffs;
+        public float timeMs;
+        public bool usedOpeningBook;
+    }
+
+    private struct PendingEngineMove
+    {
+        public bool hasValue;
+        public Move move;
+        public string sideToMove;
+        public SearchResult searchResult;
+        public string evaluatorName;
+        public bool usedOpeningBook;
     }
 
     private void OnEnable()
@@ -67,6 +112,38 @@ public class CsvRecorder : MonoBehaviour
         matchId = batchId + "_g" + currentGameNumber.ToString(CultureInfo.InvariantCulture);
         moveNumber = 0;
         recordedMoves.Clear();
+        pendingEngineMove = default;
+        startingFen = CurrentFenOrEmpty(1);
+    }
+
+    public void PrepareEngineMove(
+        BoardState stateBefore,
+        PieceColor sideToMove,
+        Move move,
+        SearchResult searchResult,
+        EngineSettings settings,
+        string evaluatorName,
+        bool usedOpeningBook)
+    {
+        if (!recordingEnabled)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(startingFen))
+        {
+            startingFen = FEN.ToFen(stateBefore, 1);
+        }
+
+        pendingEngineMove = new PendingEngineMove
+        {
+            hasValue = true,
+            move = move,
+            sideToMove = sideToMove.ToString(),
+            searchResult = searchResult,
+            evaluatorName = evaluatorName,
+            usedOpeningBook = usedOpeningBook
+        };
     }
 
     public void FinalizeBatch(int completedGames)
@@ -128,17 +205,46 @@ public class CsvRecorder : MonoBehaviour
         PieceType pieceType = movedPiece != null ? gameManager.GetPieceType(movedPiece) : PieceType.None;
 
         moveNumber++;
+        int ply = moveNumber;
+        bool hasPending = pendingEngineMove.hasValue
+            && pendingEngineMove.move.from == BoardState.SquareIndex(fromGridPoint)
+            && pendingEngineMove.move.to == BoardState.SquareIndex(toGridPoint);
+        string sideToMove = hasPending ? pendingEngineMove.sideToMove : gameManager.CurrentTurnColor.ToString();
+        string fenAfter = CurrentFenAfterMove(sideToMove, FullMoveNumberForPly(ply + 1));
+        SearchResult searchResult = hasPending ? pendingEngineMove.searchResult : default;
+        string moveUci = hasPending
+            ? MoveToUci(pendingEngineMove.move)
+            : ToSquareName(fromGridPoint) + ToSquareName(toGridPoint);
+
         recordedMoves.Add(new RecordedMove
         {
-            moveNumber = moveNumber,
-            playerColor = gameManager.CurrentTurnColor.ToString(),
+            ply = ply,
+            moveNumber = FullMoveNumberForPly(ply),
+            sideToMove = sideToMove,
+            moveUci = moveUci,
+            fenAfter = fenAfter,
             pieceType = pieceType.ToString(),
             from = ToSquareName(fromGridPoint),
             to = ToSquareName(toGridPoint),
             promotion = pieceType == PieceType.Queen || pieceType == PieceType.Rook || pieceType == PieceType.Bishop || pieceType == PieceType.Knight
                 ? InferPromotionLabel(fromGridPoint, toGridPoint, pieceType)
-                : string.Empty
+                : string.Empty,
+            searchAlgorithm = hasPending ? (pendingEngineMove.usedOpeningBook ? "OpeningBook" : "MinimaxAB") : string.Empty,
+            evaluationVersion = hasPending ? pendingEngineMove.evaluatorName : string.Empty,
+            depth = hasPending ? searchResult.stats.completedDepth : 0,
+            evaluation = hasPending ? searchResult.bestScore : 0,
+            nodesSearched = hasPending ? searchResult.stats.nodesVisited : 0,
+            leafEvaluations = hasPending ? searchResult.stats.leafEvaluations : 0,
+            transpositionHits = hasPending ? searchResult.stats.transpositionHits : 0,
+            alphaBetaCutoffs = hasPending ? searchResult.stats.alphaBetaCutoffs : 0,
+            timeMs = hasPending ? searchResult.stats.elapsedMilliseconds : 0f,
+            usedOpeningBook = hasPending && pendingEngineMove.usedOpeningBook
         });
+
+        if (pendingEngineMove.hasValue)
+        {
+            pendingEngineMove = default;
+        }
     }
 
     private void HandleGameEnded(string result, GameResultType resultType)
@@ -154,61 +260,37 @@ public class CsvRecorder : MonoBehaviour
 
     private void WriteMatchToCsv(string result, GameResultType resultType)
     {
-        string csvPath = GetBatchFilePath(fileName);
-        bool fileExists = File.Exists(csvPath);
+        string gameCsvPath = GetBatchFilePath(fileName);
+        string plyCsvPath = GetBatchFilePath(PlyFileName());
+        bool gameFileExists = File.Exists(gameCsvPath);
+        bool plyFileExists = File.Exists(plyCsvPath);
+        string timestamp = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
 
-        using (var writer = new StreamWriter(csvPath, true))
+        using (var writer = new StreamWriter(gameCsvPath, true))
         {
-            if (!fileExists)
+            if (!gameFileExists)
             {
-                writer.WriteLine("batch_id,game_number,match_id,timestamp_utc,white_profile,black_profile,move_number,player_color,piece_type,from_square,to_square,promotion,result,result_type");
+                writer.WriteLine(string.Join(",", GameCsvColumns));
             }
 
-            string timestamp = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
-            string resultTypeLabel = resultType.ToString();
+            writer.WriteLine(BuildGameCsvRow(timestamp, result, resultType));
+        }
 
-            if (recordedMoves.Count == 0)
+        using (var writer = new StreamWriter(plyCsvPath, true))
+        {
+            if (!plyFileExists)
             {
-                writer.WriteLine(string.Join(",",
-                    EscapeCsv(batchId),
-                    currentGameNumber.ToString(CultureInfo.InvariantCulture),
-                    EscapeCsv(matchId),
-                    EscapeCsv(timestamp),
-                    EscapeCsv(whiteProfileName),
-                    EscapeCsv(blackProfileName),
-                    "0",
-                    string.Empty,
-                    string.Empty,
-                    string.Empty,
-                    string.Empty,
-                    string.Empty,
-                    EscapeCsv(result),
-                    EscapeCsv(resultTypeLabel)));
+                writer.WriteLine(string.Join(",", PlyCsvColumns));
             }
-            else
+
+            foreach (RecordedMove recordedMove in recordedMoves)
             {
-                foreach (RecordedMove recordedMove in recordedMoves)
-                {
-                    writer.WriteLine(string.Join(",",
-                        EscapeCsv(batchId),
-                        currentGameNumber.ToString(CultureInfo.InvariantCulture),
-                        EscapeCsv(matchId),
-                        EscapeCsv(timestamp),
-                        EscapeCsv(whiteProfileName),
-                        EscapeCsv(blackProfileName),
-                        recordedMove.moveNumber.ToString(CultureInfo.InvariantCulture),
-                        EscapeCsv(recordedMove.playerColor),
-                        EscapeCsv(recordedMove.pieceType),
-                        EscapeCsv(recordedMove.from),
-                        EscapeCsv(recordedMove.to),
-                        EscapeCsv(recordedMove.promotion),
-                        EscapeCsv(result),
-                        EscapeCsv(resultTypeLabel)));
-                }
+                writer.WriteLine(BuildPlyCsvRow(recordedMove));
             }
         }
 
-        Debug.Log("AI vs AI CSV saved to " + csvPath, this);
+        Debug.Log("AI vs AI game CSV saved to " + gameCsvPath, this);
+        Debug.Log("AI vs AI ply CSV saved to " + plyCsvPath, this);
     }
 
     private void WriteSummaryCsv(int completedGames)
@@ -220,20 +302,20 @@ public class CsvRecorder : MonoBehaviour
         {
             if (!fileExists)
             {
-                writer.WriteLine("batch_id,timestamp_utc,white_profile,black_profile,target_completed_games,completed_games,actual_games_played,white_wins,black_wins,draws");
+                writer.WriteLine(string.Join(",", SummaryCsvColumns));
             }
 
-            writer.WriteLine(string.Join(",",
-                EscapeCsv(batchId),
-                EscapeCsv(DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture)),
-                EscapeCsv(whiteProfileName),
-                EscapeCsv(blackProfileName),
-                targetCompletedGames.ToString(CultureInfo.InvariantCulture),
-                completedGames.ToString(CultureInfo.InvariantCulture),
-                currentGameNumber.ToString(CultureInfo.InvariantCulture),
-                whiteWins.ToString(CultureInfo.InvariantCulture),
-                blackWins.ToString(CultureInfo.InvariantCulture),
-                draws.ToString(CultureInfo.InvariantCulture)));
+            writer.WriteLine(ToCsvLine(
+                batchId,
+                DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
+                whiteProfileName,
+                blackProfileName,
+                FormatInt(targetCompletedGames),
+                FormatInt(completedGames),
+                FormatInt(currentGameNumber),
+                FormatInt(whiteWins),
+                FormatInt(blackWins),
+                FormatInt(draws)));
         }
 
         Debug.Log("AI vs AI summary CSV saved to " + summaryPath, this);
@@ -270,6 +352,81 @@ public class CsvRecorder : MonoBehaviour
         return Path.Combine(directoryPath, targetFileName);
     }
 
+    private string BuildGameCsvRow(
+        string timestamp,
+        string result,
+        GameResultType resultType)
+    {
+        return ToCsvLine(
+            batchId,
+            matchId,
+            FormatInt(currentGameNumber),
+            timestamp,
+            Application.version,
+            whiteProfileName,
+            blackProfileName,
+            startingFen,
+            FormatInt(recordedMoves.Count),
+            FormatInt(recordedMoves.Count == 0 ? 0 : FullMoveNumberForPly(recordedMoves.Count)),
+            ResultNotation(resultType),
+            result,
+            resultType.ToString());
+    }
+
+    private string BuildPlyCsvRow(RecordedMove recordedMove)
+    {
+        return ToCsvLine(
+            matchId,
+            FormatInt(recordedMove.ply),
+            FormatInt(recordedMove.moveNumber),
+            recordedMove.sideToMove,
+            recordedMove.moveUci,
+            recordedMove.pieceType,
+            recordedMove.from,
+            recordedMove.to,
+            recordedMove.promotion,
+            FormatInt(recordedMove.evaluation),
+            FormatInt(recordedMove.depth),
+            FormatInt(recordedMove.nodesSearched),
+            FormatInt(recordedMove.leafEvaluations),
+            FormatInt(recordedMove.transpositionHits),
+            FormatInt(recordedMove.alphaBetaCutoffs),
+            recordedMove.timeMs.ToString("F3", CultureInfo.InvariantCulture),
+            recordedMove.searchAlgorithm,
+            recordedMove.evaluationVersion,
+            recordedMove.usedOpeningBook.ToString(),
+            recordedMove.fenAfter);
+    }
+
+    private static string ToCsvLine(params string[] values)
+    {
+        string[] escapedValues = new string[values.Length];
+        for (int i = 0; i < values.Length; i++)
+        {
+            escapedValues[i] = EscapeCsv(values[i]);
+        }
+
+        return string.Join(",", escapedValues);
+    }
+
+    private static string FormatInt(int value)
+    {
+        return value.ToString(CultureInfo.InvariantCulture);
+    }
+
+    private string PlyFileName()
+    {
+        string extension = Path.GetExtension(fileName);
+        string baseName = Path.GetFileNameWithoutExtension(fileName);
+
+        if (string.IsNullOrEmpty(extension))
+        {
+            extension = ".csv";
+        }
+
+        return baseName + "_plies" + extension;
+    }
+
     private static string GetProjectRootPath()
     {
         return Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
@@ -286,6 +443,101 @@ public class CsvRecorder : MonoBehaviour
     {
         bool reachedBackRank = (fromGridPoint.y == 6 && toGridPoint.y == 7) || (fromGridPoint.y == 1 && toGridPoint.y == 0);
         return reachedBackRank ? pieceType.ToString() : string.Empty;
+    }
+
+    private static int FullMoveNumberForPly(int ply)
+    {
+        return Mathf.Max(1, (ply + 1) / 2);
+    }
+
+    private string CurrentFenOrEmpty(int fullMoveNumber)
+    {
+        if (gameManager == null)
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            return FEN.ToFen(BoardState.boardSnapshot(), fullMoveNumber);
+        }
+        catch (NullReferenceException)
+        {
+            return string.Empty;
+        }
+    }
+
+    private string CurrentFenAfterMove(string sideToMove, int fullMoveNumber)
+    {
+        if (gameManager == null)
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            BoardState stateAfter = BoardState.boardSnapshot();
+            stateAfter.currentTurn = sideToMove == PieceColor.White.ToString()
+                ? PieceColor.Black
+                : PieceColor.White;
+            return FEN.ToFen(stateAfter, fullMoveNumber);
+        }
+        catch (NullReferenceException)
+        {
+            return string.Empty;
+        }
+    }
+
+    private static string MoveToUci(Move move)
+    {
+        string uci = SquareNameFromIndex(move.from) + SquareNameFromIndex(move.to);
+        if (move.isPromotion)
+        {
+            uci += PromotionSuffix(move.promotionType);
+        }
+
+        return uci;
+    }
+
+    private static string SquareNameFromIndex(int square)
+    {
+        if (square < 0 || square >= 64)
+        {
+            return string.Empty;
+        }
+
+        return ToSquareName(new Vector2Int(square % 8, square / 8));
+    }
+
+    private static string PromotionSuffix(PieceType promotionType)
+    {
+        switch (promotionType)
+        {
+            case PieceType.Queen: return "q";
+            case PieceType.Rook: return "r";
+            case PieceType.Bishop: return "b";
+            case PieceType.Knight: return "n";
+            default: return string.Empty;
+        }
+    }
+
+    private static string ResultNotation(GameResultType resultType)
+    {
+        switch (resultType)
+        {
+            case GameResultType.WhiteWin:
+                return "1-0";
+            case GameResultType.BlackWin:
+                return "0-1";
+            case GameResultType.DrawStalemate:
+            case GameResultType.DrawInsufficientMaterial:
+            case GameResultType.DrawFiftyMoveRule:
+            case GameResultType.DrawThreefoldRepetition:
+            case GameResultType.DrawOther:
+                return "1/2-1/2";
+            default:
+                return "*";
+        }
     }
 
     private static string EscapeCsv(string value)

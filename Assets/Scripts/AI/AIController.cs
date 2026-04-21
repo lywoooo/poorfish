@@ -123,6 +123,19 @@ public class AIController : MonoBehaviour
                 yield return AnimateAIPickup(gm.board, movedPiece);
             }
 
+            CsvRecorder csvRecorder = GetComponent<CsvRecorder>();
+            if (csvRecorder != null)
+            {
+                csvRecorder.PrepareEngineMove(
+                    liveState,
+                    aiColorEnum,
+                    result.bestMove,
+                    result,
+                    settings,
+                    evaluator != null ? evaluator.Name : string.Empty,
+                    usedOpeningBook);
+            }
+
             gm.ApplyMove(result.bestMove);
 
             Debug.Log(gm.currentPlayer.name + " (AI) [" + settings.profileName + "] played "
