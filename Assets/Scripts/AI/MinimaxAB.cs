@@ -389,20 +389,14 @@ public class MinimaxAB : ISearchEngine
 
         if (depth == 0)
         {
-            if (!MoveGenerator.HasAnyLegalMove(state, state.currentTurn, pseudoMoveBuffers[bufferIndex]))
+            bool inCheck = MoveGenerator.isInCheck(state, state.currentTurn);
+            if (inCheck && !MoveGenerator.HasAnyLegalMove(state, state.currentTurn, pseudoMoveBuffers[bufferIndex]))
             {
-                if (MoveGenerator.isInCheck(state, state.currentTurn))
-                {
-                    int mateScore = state.currentTurn == PieceColor.White
-                        ? -MateScore - depth
-                        : MateScore + depth;
-                    StoreTransposition(positionKey, depth, mateScore, default, false, TranspositionBound.Exact);
-                    return mateScore;
-                }
-
-                int drawScore = DrawPenaltyForSideToMove(state.currentTurn);
-                StoreTransposition(positionKey, depth, drawScore, default, false, TranspositionBound.Exact);
-                return drawScore;
+                int mateScore = state.currentTurn == PieceColor.White
+                    ? -MateScore - depth
+                    : MateScore + depth;
+                StoreTransposition(positionKey, depth, mateScore, default, false, TranspositionBound.Exact);
+                return mateScore;
             }
 
             leafEvaluations++;

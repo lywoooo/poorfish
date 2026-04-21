@@ -59,6 +59,7 @@ public class Board : MonoBehaviour
 
     public void RemovePiece(GameObject piece)
     {
+        ForgetPiece(piece);
         Destroy(piece);
     }
 
@@ -180,6 +181,19 @@ public class Board : MonoBehaviour
             StopCoroutine(animation);
             moveAnimations.Remove(piece);
         }
+    }
+
+    private void ForgetPiece(GameObject piece)
+    {
+        if (piece == null)
+        {
+            return;
+        }
+
+        StopMoveAnimation(piece);
+        spriteRendererCache.Remove(piece);
+        defaultPieceScales.Remove(piece);
+        defaultSortingOrders.Remove(piece);
     }
 
     private System.Collections.IEnumerator AnimatePieceMove(GameObject piece, Vector3 targetPosition)

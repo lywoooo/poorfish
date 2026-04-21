@@ -3,6 +3,8 @@ using UnityEngine;
 
 public static class MoveGenerator
 {
+    private static readonly List<Move> SharedAnyLegalMoveBuffer = new List<Move>(16);
+
     private static readonly Vector2Int[] rookDirections = {
         new Vector2Int(0, 1), new Vector2Int(1, 0),
         new Vector2Int(0, -1), new Vector2Int(-1, 0)
@@ -110,8 +112,7 @@ public static class MoveGenerator
 
     public static bool hasAnyLegalMove(BoardState state, PieceColor color)
     {
-        var candidateMoves = new List<Move>(16);
-        return HasAnyLegalMove(state, color, candidateMoves);
+        return HasAnyLegalMove(state, color, SharedAnyLegalMoveBuffer);
     }
 
     public static bool HasAnyLegalMove(BoardState state, PieceColor color, List<Move> candidateMoves)
