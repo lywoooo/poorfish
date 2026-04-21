@@ -1,129 +1,106 @@
 # poorfish
 
-`poorfish` is a Unity/C# chess project that I have been turning into a playable chess game and small engine-testing environment. It started from an existing Unity chess foundation, but my focus has been building out the rules layer, AI search, position evaluation, self-play logging, and WebGL deployment.
+`poorfish` is a Unity/C# chess engine and experimentation system focused on understanding how search algorithms and evaluation functions affect decision-making.
 
-The goal is not just to make pieces move on a board. The project is a way for me to learn how game logic, algorithms, data representation, and user interaction fit together in one system.
+It started from a Unity chess foundation, but I’ve been extending it into a system I can analyze rather than just play.
 
-<img width="1928" height="1292" alt="Chess_Screenshot" src="https://github.com/user-attachments/assets/59b7f82e-e906-4b8c-9ca0-fdbec62a9e7d" />
+![Chess Screenshot](https://github.com/user-attachments/assets/59b7f82e-e906-4b8c-9ca0-fdbec62a9e7d)
 
 ## Play it
 
 [Play poorfish on itch.io](https://lywoo.itch.io/poorfish)
 
-## What it does
+---
 
-The current build supports a full chess game loop:
+## Overview
 
-- Board setup and piece placement
-- Click and drag interaction
-- Legal move highlighting
-- Captures and last-move highlighting
-- Pawn promotion
-- Castling
-- En passant
-- Check, checkmate, and stalemate detection
-- Draw handling for insufficient material, threefold repetition, and the 50-move rule
-- Human vs human, human vs AI, and AI vs AI modes
-- WebGL builds for browser play
+The project supports a full chess game loop with legal move generation, special rules (castling, en passant, promotion), and complete game-state handling.
 
-## Technical structure
+More importantly, it is structured to allow fast simulation and experimentation on chess positions rather than relying on Unity scene objects.
 
-The project separates the Unity presentation layer from the chess logic. Unity GameObjects handle what the player sees and interacts with, while a separate `BoardState` model represents the actual chess position.
+---
 
-Some of the main systems:
+## Architecture
 
-- `BoardState` stores the position as a 64-square array, tracks turn state, castling rights, en passant targets, king positions, halfmove clocks, and last moves.
-- `MoveGenerator` creates pseudo-legal moves, then filters them by simulating each move and checking whether the king remains safe.
-- `GameManager` connects the board model to the playable Unity scene and handles applied moves, captures, promotion, turn changes, and game-ending conditions.
-- `FEN` parsing/export makes board positions easier to save, test, and log using standard chess notation.
-- `MoveSelector` handles player interaction, legal move indicators, capture rings, dragging, and promotion choices.
+The system separates game logic from rendering:
+
+- `BoardState` represents the position as a 64-square array
+- Move generation and rule validation operate entirely on this model
+- Search runs independently of Unity objects
+- Unity handles visualization and interaction
+
+This separation allows the engine to simulate positions quickly and run AI search and experiments without scene overhead.
+
+---
 
 ## Chess AI
 
-The AI is search-based rather than random. It uses a minimax-style search with alpha-beta pruning to evaluate future positions and choose moves.
+The engine uses a search-based approach:
 
-Current engine features include:
-
-- Minimax search with alpha-beta pruning
-- Iterative deepening
-- Time-limited search
+- Minimax with alpha-beta pruning
+- Iterative deepening and time-limited search
 - Transposition table caching
-- Move ordering
-- Immediate checkmate move detection
-- Adaptive search depth in endgames
-- Configurable engine profiles through Unity `ScriptableObject` settings
-- Opening book support for a small set of common openings
+- Move ordering and adaptive endgame depth
 
-The evaluation function considers more than material:
+The evaluation function goes beyond material:
 
-- Material values
 - Piece-square tables
-- Optional mobility scoring
-- Endgame mate pressure
-- King edge pressure
-- King distance pressure
-- Draw and repetition penalties
+- Mobility and positional heuristics
+- King pressure and endgame features
+- Configurable weights through engine profiles
 
-## Self-play data
+To better understand behavior, I added instrumentation:
 
-I added AI-vs-AI batch logging so the engine can be tested over multiple games instead of judged only by feel. The logs are still small and experimental, but they already helped me see patterns in how the engine behaves.
+- nodes explored  
+- alpha-beta cutoffs  
+- transposition hits  
+- search depth and time  
 
-Current logged sample:
+This lets me measure how the engine works instead of treating it as a black box.
 
-- 59 AI-vs-AI games
-- 23 self-play batches
-- 2,884 total plies logged
-- Average game length: 48.9 plies
-- Median game length: 37 plies
-- Longest logged game: 232 plies
-- All logged games are Baseline vs Baseline engine matches
+---
 
-Result breakdown:
+## Experimentation
 
-| Result type | Games | Share |
-| --- | ---: | ---: |
-| White win | 13 | 22.0% |
-| Black win | 10 | 16.9% |
-| Draw by insufficient material | 17 | 28.8% |
-| Draw by threefold repetition | 19 | 32.2% |
+I built an AI-vs-AI batch system with CSV logging so I could compare engine configurations across full games.
 
-The trend over time is useful even though the dataset is small. Early April 9 runs had more decisive games and much longer average game lengths. Later runs, especially April 20 and April 21, produced more threefold-repetition draws, which suggests the engine can still fall into repeated safe moves in simplified positions. That gives me a concrete next target: improve repetition avoidance, endgame planning, and evaluation pressure instead of only increasing search depth.
+Logged data includes:
 
-## Search statistics
+- FEN positions  
+- evaluation scores  
+- search depth  
+- nodes explored  
+- pruning cutoffs  
+- transposition hits  
 
-The newer logs include detailed per-ply search statistics for 402 engine moves across 5 games. In that sample, the engine searched:
+Current sample:
 
-- 157,316,948 total nodes
-- 50,617,653 leaf evaluations
-- 75,496,900 transposition table hits
-- 22,298,962 alpha-beta cutoffs
-- Average completed depth of about 8 plies
-- Average search time of about 501.5 ms per move
-- Transposition hits equal to about 48.0% of searched nodes
-- Alpha-beta cutoffs equal to about 14.2% of searched nodes
+- 59 games (baseline vs baseline)  
+- 2,884 plies logged  
+- average game length: 48.9 plies  
 
-These numbers make the project easier to study. Instead of only asking whether the AI won a game, I can look at how much work the engine did, whether caching helped, how often pruning happened, and where the search still struggles.
+Results show a high rate of repetition-based draws in simplified positions.
 
-## What I learned
+This suggests the engine prioritizes safe repetition over meaningful progress, giving me a concrete next direction: improving evaluation pressure instead of only increasing search depth.
 
-This project has helped me understand that chess programming is a combination of correctness, algorithms, and measurement.
+---
 
-The hardest parts have been:
+## Key Insight
 
-- Making move generation legal instead of just plausible
-- Handling special rules without breaking normal movement
-- Keeping the board model fast enough for repeated search
-- Designing an evaluation function that makes the AI play more purposefully
-- Logging enough data to find weaknesses in the engine
-- Connecting backend chess logic to a playable Unity interface
+One of the main insights from this project is that deeper search does not necessarily lead to better play.
+
+In many cases, increasing depth without improving evaluation caused the engine to repeat moves or fail to make progress.
+
+This shifted my focus from adding features to understanding how search and evaluation interact, and treating the engine as something to measure and test rather than something to complete.
+
+---
 
 ## Status
 
-`poorfish` is still in progress. The next improvements I want to work on are:
+`poorfish` is still in progress. Current focus areas:
 
-- Better repetition avoidance
-- Stronger endgame evaluation
-- More varied engine profiles for self-play comparison
-- Cleaner analysis scripts for the CSV logs
-- More polished browser presentation
-- Continuing to improve the itch.io build
+- reducing repetition in endgames  
+- strengthening evaluation heuristics  
+- comparing engine profiles through self-play  
+- improving analysis tooling for logged data  
+- refining the WebGL build  
