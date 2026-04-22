@@ -33,14 +33,14 @@ public class ChessMatchCoordinator : MonoBehaviour
     [SerializeField] private BoardUI boardUI;
     [SerializeField] private MoveSelector moveSelector;
     [SerializeField] private bool autoConfigureInEditor = true;
+    [SerializeField] private EngineProfile configuredWhiteProfile;
+    [SerializeField] private EngineProfile configuredBlackProfile;
     private CsvRecorder csvRecorder;
     private int completedBatchGames;
     private int whiteWins;
     private int blackWins;
     private int draws;
     private bool batchRestartQueued;
-    private EngineProfile configuredWhiteProfile;
-    private EngineProfile configuredBlackProfile;
 
     public ChessMatchMode MatchMode => matchMode;
     public int CompletedBatchGames => completedBatchGames;
