@@ -25,6 +25,7 @@ public class ChessMatchCoordinator : MonoBehaviour
     [SerializeField] private bool runAIVsAIBatch = false;
     [SerializeField] private int aiVsAiBatchGameCount = 100;
     [SerializeField] private int maxFullMovesPerGame = 100;
+    [SerializeField] private bool alternateColorsInBatch = true;
     [SerializeField] private bool rerunStalematesInBatch = false;
     [SerializeField] private float aiVsAiRestartDelay = 0.35f;
     [SerializeField] private GameManager gameManager;
@@ -38,6 +39,8 @@ public class ChessMatchCoordinator : MonoBehaviour
     private int blackWins;
     private int draws;
     private bool batchRestartQueued;
+    private EngineProfile configuredWhiteProfile;
+    private EngineProfile configuredBlackProfile;
 
     public ChessMatchMode MatchMode => matchMode;
     public int CompletedBatchGames => completedBatchGames;
@@ -139,6 +142,7 @@ public class ChessMatchCoordinator : MonoBehaviour
                 blackWins = 0;
                 draws = 0;
                 batchRestartQueued = false;
+                AssignEngineProfilesForBatchGame(aiControllers);
                 csvRecorder.Configure(gameManager, shouldRecord, aiVsAiCsvFileName, aiControllers, plannedGames);
             }
         }
@@ -247,9 +251,12 @@ public class ChessMatchCoordinator : MonoBehaviour
             aiController.ResetControllerState();
         }
 
+        AIController[] aiControllers = GetComponents<AIController>();
+        AssignEngineProfilesForBatchGame(aiControllers);
+
         if (csvRecorder != null)
         {
-            csvRecorder.BeginNextGame();
+            csvRecorder.BeginNextGame(aiControllers);
         }
 
         ApplyMode(false);
@@ -299,6 +306,7 @@ public class ChessMatchCoordinator : MonoBehaviour
         bool recordCsv,
         string csvFileName,
         int maxFullMoves,
+        bool alternateColors,
         bool rerunStalemates,
         float restartDelay)
     {
@@ -309,9 +317,12 @@ public class ChessMatchCoordinator : MonoBehaviour
         runAIVsAIBatch = true;
         aiVsAiBatchGameCount = Mathf.Max(1, gameCount);
         maxFullMovesPerGame = Mathf.Max(1, maxFullMoves);
+        alternateColorsInBatch = alternateColors;
         rerunStalematesInBatch = rerunStalemates;
         aiVsAiRestartDelay = Mathf.Max(0f, restartDelay);
-        AssignEngineProfiles(whiteProfile, blackProfile);
+        configuredWhiteProfile = whiteProfile;
+        configuredBlackProfile = blackProfile;
+        AssignEngineProfilesForBatchGame(GetComponents<AIController>());
 
         if (Application.isPlaying)
         {
@@ -319,9 +330,24 @@ public class ChessMatchCoordinator : MonoBehaviour
         }
     }
 
-    private void AssignEngineProfiles(EngineProfile whiteProfile, EngineProfile blackProfile)
+    private void AssignEngineProfilesForBatchGame(AIController[] aiControllers)
     {
-        AIController[] aiControllers = GetComponents<AIController>();
+        if (configuredWhiteProfile == null && configuredBlackProfile == null)
+        {
+            return;
+        }
+
+        bool swapProfiles = alternateColorsInBatch
+            && configuredWhiteProfile != configuredBlackProfile
+            && completedBatchGames % 2 == 1;
+
+        EngineProfile whiteProfile = swapProfiles ? configuredBlackProfile : configuredWhiteProfile;
+        EngineProfile blackProfile = swapProfiles ? configuredWhiteProfile : configuredBlackProfile;
+        AssignEngineProfiles(whiteProfile, blackProfile, aiControllers);
+    }
+
+    private void AssignEngineProfiles(EngineProfile whiteProfile, EngineProfile blackProfile, AIController[] aiControllers)
+    {
         if (aiControllers.Length >= 1)
         {
             aiControllers[0].aiStartColorBlack = false;

@@ -105,12 +105,12 @@ public class CsvRecorder : MonoBehaviour
         whiteWins = 0;
         blackWins = 0;
         draws = 0;
-        ResolveProfileNames(aiControllers);
-        BeginNextGame();
+        BeginNextGame(aiControllers);
     }
 
-    public void BeginNextGame()
+    public void BeginNextGame(AIController[] aiControllers = null)
     {
+        ResolveProfileNames(aiControllers);
         currentGameNumber++;
         matchId = batchId + "_g" + currentGameNumber.ToString(CultureInfo.InvariantCulture);
         moveNumber = 0;

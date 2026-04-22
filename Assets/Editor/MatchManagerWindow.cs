@@ -11,6 +11,7 @@ public class MatchManagerWindow : EditorWindow
     private int maxFullMoves = 100;
     private bool recordCsv = true;
     private string csvFileName = "experiment_matches.csv";
+    private bool alternateColors = true;
     private bool rerunStalemates;
     private float restartDelay = 0.05f;
     private Vector2 scrollPosition;
@@ -83,6 +84,7 @@ public class MatchManagerWindow : EditorWindow
             recordCsv,
             csvFileName,
             maxFullMoves,
+            alternateColors,
             rerunStalemates,
             restartDelay);
 
@@ -184,6 +186,7 @@ public class MatchManagerWindow : EditorWindow
         gameCount = Mathf.Max(1, EditorGUILayout.IntField("Games", gameCount));
         maxFullMoves = Mathf.Max(1, EditorGUILayout.IntField("Max Moves", maxFullMoves));
         restartDelay = Mathf.Max(0f, EditorGUILayout.FloatField("Restart Delay", restartDelay));
+        alternateColors = EditorGUILayout.Toggle("Alternate Colors", alternateColors);
         recordCsv = EditorGUILayout.Toggle("Record CSV", recordCsv);
         using (new EditorGUI.DisabledScope(!recordCsv))
         {
