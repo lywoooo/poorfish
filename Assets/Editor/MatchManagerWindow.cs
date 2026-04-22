@@ -219,12 +219,11 @@ public class MatchManagerWindow : EditorWindow
         if (WhiteName == BlackName)
         {
             EditorGUILayout.LabelField("Mirror match: " + WhiteName, labelStyle);
-            EditorGUILayout.LabelField("White-side wins: " + WhiteWins + "  Black-side wins: " + BlackWins + "  Draws: " + Draws, labelStyle);
-            return;
         }
 
         EditorGUILayout.LabelField(BlackName + ": Wins: " + BlackWins + " Losses: " + WhiteWins + " Draws: " + Draws, labelStyle);
         EditorGUILayout.LabelField(WhiteName + ": Wins: " + WhiteWins + " Losses: " + BlackWins + " Draws: " + Draws, labelStyle);
+        EditorGUILayout.LabelField("Sides: White " + WhiteSideWins + "  Black " + BlackSideWins + (alternateColors ? "  Alternating" : ""), mutedStyle);
     }
 
     private void DrawProfileField(string label, ref EngineProfile profile)
@@ -313,6 +312,10 @@ public class MatchManagerWindow : EditorWindow
     private int BlackWins => coordinator != null ? coordinator.BlackWins : 0;
 
     private int Draws => coordinator != null ? coordinator.Draws : 0;
+
+    private int WhiteSideWins => coordinator != null ? coordinator.WhiteSideWins : 0;
+
+    private int BlackSideWins => coordinator != null ? coordinator.BlackSideWins : 0;
 
     private void EnsureStyles()
     {

@@ -37,16 +37,20 @@ public class ChessMatchCoordinator : MonoBehaviour
     [SerializeField] private EngineProfile configuredBlackProfile;
     private CsvRecorder csvRecorder;
     private int completedBatchGames;
-    private int whiteWins;
-    private int blackWins;
+    private int selectedWhiteProfileWins;
+    private int selectedBlackProfileWins;
     private int draws;
+    private int whiteSideWins;
+    private int blackSideWins;
     private bool batchRestartQueued;
 
     public ChessMatchMode MatchMode => matchMode;
     public int CompletedBatchGames => completedBatchGames;
-    public int WhiteWins => whiteWins;
-    public int BlackWins => blackWins;
+    public int WhiteWins => selectedWhiteProfileWins;
+    public int BlackWins => selectedBlackProfileWins;
     public int Draws => draws;
+    public int WhiteSideWins => whiteSideWins;
+    public int BlackSideWins => blackSideWins;
 
     void Reset()
     {
@@ -138,9 +142,11 @@ public class ChessMatchCoordinator : MonoBehaviour
             if (resetBatchProgress)
             {
                 completedBatchGames = 0;
-                whiteWins = 0;
-                blackWins = 0;
+                selectedWhiteProfileWins = 0;
+                selectedBlackProfileWins = 0;
                 draws = 0;
+                whiteSideWins = 0;
+                blackSideWins = 0;
                 batchRestartQueued = false;
                 AssignEngineProfilesForBatchGame(aiControllers);
                 csvRecorder.Configure(gameManager, shouldRecord, aiVsAiCsvFileName, aiControllers, plannedGames);
@@ -176,8 +182,8 @@ public class ChessMatchCoordinator : MonoBehaviour
         bool countsTowardTarget = !runAIVsAIBatch || !rerunStalematesInBatch || !stalemateResult;
         if (countsTowardTarget)
         {
-            completedBatchGames++;
             TallyResult(resultType);
+            completedBatchGames++;
         }
 
         int targetGames = runAIVsAIBatch ? Mathf.Max(1, aiVsAiBatchGameCount) : 1;
@@ -207,19 +213,37 @@ public class ChessMatchCoordinator : MonoBehaviour
 
         if (csvRecorder != null)
         {
-            csvRecorder.FinalizeBatch(completedBatchGames);
+            csvRecorder.FinalizeBatch(completedBatchGames, selectedWhiteProfileWins, selectedBlackProfileWins, draws);
         }
     }
 
     private void TallyResult(GameResultType resultType)
     {
+        bool swapProfiles = ShouldSwapProfilesForCurrentGame();
+
         switch (resultType)
         {
             case GameResultType.WhiteWin:
-                whiteWins++;
+                whiteSideWins++;
+                if (swapProfiles)
+                {
+                    selectedBlackProfileWins++;
+                }
+                else
+                {
+                    selectedWhiteProfileWins++;
+                }
                 return;
             case GameResultType.BlackWin:
-                blackWins++;
+                blackSideWins++;
+                if (swapProfiles)
+                {
+                    selectedWhiteProfileWins++;
+                }
+                else
+                {
+                    selectedBlackProfileWins++;
+                }
                 return;
             default:
                 draws++;
@@ -337,13 +361,18 @@ public class ChessMatchCoordinator : MonoBehaviour
             return;
         }
 
-        bool swapProfiles = alternateColorsInBatch
-            && configuredWhiteProfile != configuredBlackProfile
-            && completedBatchGames % 2 == 1;
+        bool swapProfiles = ShouldSwapProfilesForCurrentGame();
 
         EngineProfile whiteProfile = swapProfiles ? configuredBlackProfile : configuredWhiteProfile;
         EngineProfile blackProfile = swapProfiles ? configuredWhiteProfile : configuredBlackProfile;
         AssignEngineProfiles(whiteProfile, blackProfile, aiControllers);
+    }
+
+    private bool ShouldSwapProfilesForCurrentGame()
+    {
+        return alternateColorsInBatch
+            && configuredWhiteProfile != configuredBlackProfile
+            && completedBatchGames % 2 == 1;
     }
 
     private void AssignEngineProfiles(EngineProfile whiteProfile, EngineProfile blackProfile, AIController[] aiControllers)

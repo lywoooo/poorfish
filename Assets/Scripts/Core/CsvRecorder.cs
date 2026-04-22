@@ -24,7 +24,7 @@ public class CsvRecorder : MonoBehaviour
     private static readonly string[] SummaryCsvColumns =
     {
         "batch_id", "timestamp_utc", "white_profile", "black_profile", "target_completed_games",
-        "completed_games", "actual_games_played", "white_wins", "black_wins", "draws"
+        "completed_games", "actual_games_played", "white_wins", "white_losses", "black_wins", "black_losses", "draws"
     };
 
     private readonly List<RecordedMove> recordedMoves = new List<RecordedMove>(256);
@@ -36,6 +36,8 @@ public class CsvRecorder : MonoBehaviour
     private string matchId;
     private string whiteProfileName = "White";
     private string blackProfileName = "Black";
+    private string summaryWhiteProfileName = "White";
+    private string summaryBlackProfileName = "Black";
     private int targetCompletedGames = 1;
     private int currentGameNumber;
     private int whiteWins;
@@ -106,6 +108,8 @@ public class CsvRecorder : MonoBehaviour
         blackWins = 0;
         draws = 0;
         BeginNextGame(aiControllers);
+        summaryWhiteProfileName = whiteProfileName;
+        summaryBlackProfileName = blackProfileName;
     }
 
     public void BeginNextGame(AIController[] aiControllers = null)
@@ -151,13 +155,16 @@ public class CsvRecorder : MonoBehaviour
         };
     }
 
-    public void FinalizeBatch(int completedGames)
+    public void FinalizeBatch(int completedGames, int countedWhiteWins, int countedBlackWins, int countedDraws)
     {
         if (!recordingEnabled)
         {
             return;
         }
 
+        whiteWins = countedWhiteWins;
+        blackWins = countedBlackWins;
+        draws = countedDraws;
         WriteSummaryCsv(completedGames);
         recordingEnabled = false;
     }
@@ -322,13 +329,15 @@ public class CsvRecorder : MonoBehaviour
             writer.WriteLine(ToCsvLine(
                 batchId,
                 DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
-                whiteProfileName,
-                blackProfileName,
+                summaryWhiteProfileName,
+                summaryBlackProfileName,
                 FormatInt(targetCompletedGames),
                 FormatInt(completedGames),
                 FormatInt(currentGameNumber),
                 FormatInt(whiteWins),
                 FormatInt(blackWins),
+                FormatInt(blackWins),
+                FormatInt(whiteWins),
                 FormatInt(draws)));
         }
 

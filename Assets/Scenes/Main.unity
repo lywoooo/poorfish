@@ -322,7 +322,7 @@ MonoBehaviour:
   moveDelay: 0.1
   aiPickupDuration: 0.0012
   aiPickupLiftRatio: 0.18
-  engineProfile: {fileID: 0}
+  engineProfile: {fileID: 11400000, guid: 5f37a89d5022547fe9ffdbc12e3de95b, type: 2}
   fallbackSettings:
     profileName: Baseline
     searchDepth: 6
@@ -360,7 +360,7 @@ MonoBehaviour:
   moveDelay: 0.1
   aiPickupDuration: 0.0012
   aiPickupLiftRatio: 0.18
-  engineProfile: {fileID: 0}
+  engineProfile: {fileID: 11400000, guid: d8f66e21db15c4334b5b71c6ce6f6704, type: 2}
   fallbackSettings:
     profileName: Baseline
     searchDepth: 6
@@ -396,17 +396,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   matchMode: 2
   humanSide: 0
-  recordAIVsAIToCsv: 0
-  aiVsAiCsvFileName: matches.csv
+  recordAIVsAIToCsv: 1
+  aiVsAiCsvFileName: experiment_matches.csv
   runAIVsAIBatch: 1
-  aiVsAiBatchGameCount: 1
+  aiVsAiBatchGameCount: 100
+  maxFullMovesPerGame: 100
+  alternateColorsInBatch: 1
   rerunStalematesInBatch: 0
-  aiVsAiRestartDelay: 0.5
+  aiVsAiRestartDelay: 0.05
   gameManager: {fileID: 516697451}
   board: {fileID: 516697442}
   boardUI: {fileID: 516697440}
   moveSelector: {fileID: 516697444}
   autoConfigureInEditor: 1
+  configuredWhiteProfile: {fileID: 11400000, guid: 5f37a89d5022547fe9ffdbc12e3de95b,
+    type: 2}
+  configuredBlackProfile: {fileID: 11400000, guid: d8f66e21db15c4334b5b71c6ce6f6704,
+    type: 2}
 --- !u!1 &516697450
 GameObject:
   m_ObjectHideFlags: 0
@@ -439,6 +445,7 @@ MonoBehaviour:
   board: {fileID: 516697442}
   piecePrefab: {fileID: 3774768026620902778, guid: e17d01075bdd64b3c898395ebc5b048f,
     type: 3}
+  maxFullMoves: 100
   whiteKingSprite: {fileID: 153240639, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
   whiteQueenSprite: {fileID: 2091564365, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
   whiteBishopSprite: {fileID: 1245377925, guid: d99b68864fc1248aabc5b1d3067ac07e,
@@ -456,7 +463,7 @@ MonoBehaviour:
     type: 3}
   blackRookSprite: {fileID: 908599678, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
   blackPawnSprite: {fileID: -5830143, guid: d99b68864fc1248aabc5b1d3067ac07e, type: 3}
-  loadFENString: r7/4R2P/3p4/3k1K2/2p5/8/8/8 b - - 0 0
+  loadFENString: 
 --- !u!4 &516697452
 Transform:
   m_ObjectHideFlags: 0

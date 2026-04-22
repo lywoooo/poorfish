@@ -30,6 +30,11 @@ public static class FEN
             return false;
         }
 
+        if (!HasValidKingCounts(state))
+        {
+            return false;
+        }
+
         if (!TryParseActiveColor(parts[1], out state.currentTurn))
         {
             return false;
@@ -211,6 +216,32 @@ public static class FEN
         }
 
         return true;
+    }
+
+    private static bool HasValidKingCounts(BoardState state)
+    {
+        int whiteKings = 0;
+        int blackKings = 0;
+
+        for (int square = 0; square < state.board.Length; square++)
+        {
+            int piece = state.board[square];
+            if (PieceBits.isEmpty(piece) || PieceBits.GetType(piece) != PieceType.King)
+            {
+                continue;
+            }
+
+            if (PieceBits.GetColor(piece) == PieceColor.White)
+            {
+                whiteKings++;
+            }
+            else
+            {
+                blackKings++;
+            }
+        }
+
+        return whiteKings == 1 && blackKings == 1;
     }
 
     private static bool TryParsePiece(char symbol, out PieceType type, out PieceColor color)

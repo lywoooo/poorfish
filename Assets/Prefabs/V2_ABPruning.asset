@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   profileName: V2_ABPruning
   searchDepth: 6
-  maxThinkTimeSeconds: 1.5
+  maxThinkTimeSeconds: 0.1
   logSearchStats: 1
   useAlphaBetaPruning: 1
   useMoveOrdering: 0

@@ -11,7 +11,7 @@ public class EngineProfile : ScriptableObject
     [Min(1)]
     public int searchDepth = 6;
     [Min(0f)]
-    public float maxThinkTimeSeconds = 1.5f;
+    public float maxThinkTimeSeconds = 0.1f;
     public bool logSearchStats = true;
     public bool useAlphaBetaPruning = true;
     public bool useMoveOrdering = true;
@@ -61,7 +61,7 @@ public struct EngineSettings
     {
         profileName = "Baseline",
         searchDepth = 6,
-        maxThinkTimeSeconds = 1.5f,
+        maxThinkTimeSeconds = 0.1f,
         logSearchStats = true,
         useAlphaBetaPruning = true,
         useMoveOrdering = true,
