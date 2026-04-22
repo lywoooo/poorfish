@@ -18,7 +18,7 @@ public class CsvRecorder : MonoBehaviour
         "game_id", "ply", "move_number", "side_to_move", "move_uci", "piece_type", "from_square",
         "to_square", "promotion", "evaluation", "depth", "nodes_searched", "leaf_evaluations",
         "transposition_hits", "alpha_beta_cutoffs", "time_ms", "search_algorithm", "evaluation_version",
-        "used_opening_book", "fen_after"
+        "enabled_techniques", "used_opening_book", "fen_after"
     };
 
     private static readonly string[] SummaryCsvColumns =
@@ -58,6 +58,7 @@ public class CsvRecorder : MonoBehaviour
         public string promotion;
         public string searchAlgorithm;
         public string evaluationVersion;
+        public string enabledTechniques;
         public int depth;
         public int evaluation;
         public int nodesSearched;
@@ -74,6 +75,8 @@ public class CsvRecorder : MonoBehaviour
         public Move move;
         public string sideToMove;
         public SearchResult searchResult;
+        public string searchAlgorithm;
+        public string enabledTechniques;
         public string evaluatorName;
         public bool usedOpeningBook;
     }
@@ -141,6 +144,8 @@ public class CsvRecorder : MonoBehaviour
             move = move,
             sideToMove = sideToMove.ToString(),
             searchResult = searchResult,
+            searchAlgorithm = settings.SearchAlgorithmName,
+            enabledTechniques = settings.TechniqueSummary,
             evaluatorName = evaluatorName,
             usedOpeningBook = usedOpeningBook
         };
@@ -229,8 +234,9 @@ public class CsvRecorder : MonoBehaviour
             promotion = pieceType == PieceType.Queen || pieceType == PieceType.Rook || pieceType == PieceType.Bishop || pieceType == PieceType.Knight
                 ? InferPromotionLabel(fromGridPoint, toGridPoint, pieceType)
                 : string.Empty,
-            searchAlgorithm = hasPending ? (pendingEngineMove.usedOpeningBook ? "OpeningBook" : "MinimaxAB") : string.Empty,
+            searchAlgorithm = hasPending ? (pendingEngineMove.usedOpeningBook ? "OpeningBook" : pendingEngineMove.searchAlgorithm) : string.Empty,
             evaluationVersion = hasPending ? pendingEngineMove.evaluatorName : string.Empty,
+            enabledTechniques = hasPending ? pendingEngineMove.enabledTechniques : string.Empty,
             depth = hasPending ? searchResult.stats.completedDepth : 0,
             evaluation = hasPending ? searchResult.bestScore : 0,
             nodesSearched = hasPending ? searchResult.stats.nodesVisited : 0,
@@ -394,6 +400,7 @@ public class CsvRecorder : MonoBehaviour
             recordedMove.timeMs.ToString("F3", CultureInfo.InvariantCulture),
             recordedMove.searchAlgorithm,
             recordedMove.evaluationVersion,
+            recordedMove.enabledTechniques,
             recordedMove.usedOpeningBook.ToString(),
             recordedMove.fenAfter);
     }

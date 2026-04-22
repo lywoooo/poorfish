@@ -102,7 +102,9 @@ public class AIController : MonoBehaviour
 
         SearchResult result;
         Move bookMove = default;
-        bool usedOpeningBook = openingBook != null && openingBook.TryGetBookMove(liveState, out bookMove);
+        bool usedOpeningBook = settings.useOpeningBook
+            && openingBook != null
+            && openingBook.TryGetBookMove(liveState, out bookMove);
         if (usedOpeningBook)
         {
             result = new SearchResult(bookMove, 0, true, new SearchStats(0, 0, 0, 0, 0, 0f));
@@ -209,6 +211,12 @@ public class AIController : MonoBehaviour
             && left.searchDepth == right.searchDepth
             && Mathf.Approximately(left.maxThinkTimeSeconds, right.maxThinkTimeSeconds)
             && left.logSearchStats == right.logSearchStats
+            && left.useAlphaBetaPruning == right.useAlphaBetaPruning
+            && left.useMoveOrdering == right.useMoveOrdering
+            && left.useTranspositionTable == right.useTranspositionTable
+            && left.useAdaptiveEndgameDepth == right.useAdaptiveEndgameDepth
+            && left.useImmediateCheckmateShortcut == right.useImmediateCheckmateShortcut
+            && left.useOpeningBook == right.useOpeningBook
             && left.evaluationWeights.materialWeight == right.evaluationWeights.materialWeight
             && left.evaluationWeights.pieceSquareWeight == right.evaluationWeights.pieceSquareWeight
             && left.evaluationWeights.mobilityWeight == right.evaluationWeights.mobilityWeight

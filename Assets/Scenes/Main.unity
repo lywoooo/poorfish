@@ -328,6 +328,12 @@ MonoBehaviour:
     searchDepth: 6
     maxThinkTimeSeconds: 100
     logSearchStats: 1
+    useAlphaBetaPruning: 1
+    useMoveOrdering: 1
+    useTranspositionTable: 1
+    useAdaptiveEndgameDepth: 1
+    useImmediateCheckmateShortcut: 1
+    useOpeningBook: 1
     evaluationWeights:
       materialWeight: 100
       pieceSquareWeight: 100
@@ -359,6 +365,12 @@ MonoBehaviour:
     searchDepth: 6
     maxThinkTimeSeconds: 100
     logSearchStats: 1
+    useAlphaBetaPruning: 1
+    useMoveOrdering: 1
+    useTranspositionTable: 1
+    useAdaptiveEndgameDepth: 1
+    useImmediateCheckmateShortcut: 1
+    useOpeningBook: 1
     evaluationWeights:
       materialWeight: 100
       pieceSquareWeight: 100
