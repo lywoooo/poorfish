@@ -60,6 +60,13 @@ public static class MoveGenerator
         }
     }
 
+    public static int CountPseudoLegalMoves(BoardState state, PieceColor color, List<Move> moveBuffer)
+    {
+        moveBuffer.Clear();
+        AddUnfilteredMoves(state, color, moveBuffer);
+        return moveBuffer.Count;
+    }
+
     public static void GetLegalMovesFromSquare(
         BoardState state,
         PieceColor color,

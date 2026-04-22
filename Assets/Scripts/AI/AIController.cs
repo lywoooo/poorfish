@@ -220,6 +220,7 @@ public class AIController : MonoBehaviour
             && left.evaluationWeights.materialWeight == right.evaluationWeights.materialWeight
             && left.evaluationWeights.pieceSquareWeight == right.evaluationWeights.pieceSquareWeight
             && left.evaluationWeights.mobilityWeight == right.evaluationWeights.mobilityWeight
+            && left.evaluationWeights.developmentWeight == right.evaluationWeights.developmentWeight
             && left.evaluationWeights.drawPenalty == right.evaluationWeights.drawPenalty
             && left.evaluationWeights.repetitionPenalty == right.evaluationWeights.repetitionPenalty
             && left.evaluationWeights.endgameMateWeight == right.evaluationWeights.endgameMateWeight

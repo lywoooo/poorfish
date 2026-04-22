@@ -110,6 +110,7 @@ public struct EngineSettings
                 + ";material_weight=" + evaluationWeights.materialWeight
                 + ";piece_square_weight=" + evaluationWeights.pieceSquareWeight
                 + ";mobility_weight=" + evaluationWeights.mobilityWeight
+                + ";development_weight=" + evaluationWeights.developmentWeight
                 + ";endgame_mate_weight=" + evaluationWeights.endgameMateWeight;
         }
     }

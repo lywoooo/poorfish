@@ -33,9 +33,16 @@ public class ChessMatchCoordinator : MonoBehaviour
     [SerializeField] private bool autoConfigureInEditor = true;
     private CsvRecorder csvRecorder;
     private int completedBatchGames;
+    private int whiteWins;
+    private int blackWins;
+    private int draws;
     private bool batchRestartQueued;
 
     public ChessMatchMode MatchMode => matchMode;
+    public int CompletedBatchGames => completedBatchGames;
+    public int WhiteWins => whiteWins;
+    public int BlackWins => blackWins;
+    public int Draws => draws;
 
     void Reset()
     {
@@ -127,6 +134,9 @@ public class ChessMatchCoordinator : MonoBehaviour
             if (resetBatchProgress)
             {
                 completedBatchGames = 0;
+                whiteWins = 0;
+                blackWins = 0;
+                draws = 0;
                 batchRestartQueued = false;
                 csvRecorder.Configure(gameManager, shouldRecord, aiVsAiCsvFileName, aiControllers, plannedGames);
             }
@@ -157,6 +167,7 @@ public class ChessMatchCoordinator : MonoBehaviour
         if (countsTowardTarget)
         {
             completedBatchGames++;
+            TallyResult(resultType);
         }
 
         int targetGames = runAIVsAIBatch ? Mathf.Max(1, aiVsAiBatchGameCount) : 1;
@@ -177,6 +188,22 @@ public class ChessMatchCoordinator : MonoBehaviour
         if (runAIVsAIBatch && !batchRestartQueued)
         {
             StartCoroutine(RestartBatchMatch());
+        }
+    }
+
+    private void TallyResult(GameResultType resultType)
+    {
+        switch (resultType)
+        {
+            case GameResultType.WhiteWin:
+                whiteWins++;
+                return;
+            case GameResultType.BlackWin:
+                blackWins++;
+                return;
+            default:
+                draws++;
+                return;
         }
     }
 
@@ -246,6 +273,47 @@ public class ChessMatchCoordinator : MonoBehaviour
         {
             aiControllers[1].aiStartColorBlack = true;
             aiControllers[1].enabled = true;
+        }
+    }
+
+    public void ConfigureBatchFromManager(
+        EngineProfile whiteProfile,
+        EngineProfile blackProfile,
+        int gameCount,
+        bool recordCsv,
+        string csvFileName,
+        bool rerunStalemates,
+        float restartDelay)
+    {
+        CacheReferences();
+        matchMode = ChessMatchMode.AIVsAI;
+        recordAIVsAIToCsv = recordCsv;
+        aiVsAiCsvFileName = string.IsNullOrWhiteSpace(csvFileName) ? "matches.csv" : csvFileName.Trim();
+        runAIVsAIBatch = true;
+        aiVsAiBatchGameCount = Mathf.Max(1, gameCount);
+        rerunStalematesInBatch = rerunStalemates;
+        aiVsAiRestartDelay = Mathf.Max(0f, restartDelay);
+        AssignEngineProfiles(whiteProfile, blackProfile);
+
+        if (Application.isPlaying)
+        {
+            ApplyMode();
+        }
+    }
+
+    private void AssignEngineProfiles(EngineProfile whiteProfile, EngineProfile blackProfile)
+    {
+        AIController[] aiControllers = GetComponents<AIController>();
+        if (aiControllers.Length >= 1)
+        {
+            aiControllers[0].aiStartColorBlack = false;
+            aiControllers[0].engineProfile = whiteProfile;
+        }
+
+        if (aiControllers.Length >= 2)
+        {
+            aiControllers[1].aiStartColorBlack = true;
+            aiControllers[1].engineProfile = blackProfile;
         }
     }
 }
