@@ -22,6 +22,10 @@ public partial class GameManager : MonoBehaviour
     public Board board;
     public GameObject piecePrefab;
 
+    [SerializeField]
+    [Min(1)]
+    private int maxFullMoves = 100;
+
     public Sprite whiteKingSprite;
     public Sprite whiteQueenSprite;
     public Sprite whiteBishopSprite;
@@ -62,6 +66,12 @@ public partial class GameManager : MonoBehaviour
     public bool HasLastBlackAppliedMove { get; private set; }
     public Move LastBlackAppliedMove { get; private set; }
     public int HalfmoveClock { get; private set; }
+    public int PlyCount { get; private set; }
+    public int MaxFullMoves
+    {
+        get => maxFullMoves;
+        set => maxFullMoves = Mathf.Max(1, value);
+    }
     public PieceColor CurrentTurnColor => currentPlayer == white ? PieceColor.White : PieceColor.Black;
     public string CurrentTurnName => currentPlayer != null ? currentPlayer.name : string.Empty;
     public bool WhiteKingMoved { get; private set; }

@@ -268,6 +268,7 @@ public class CsvRecorder : MonoBehaviour
     {
         string gameCsvPath = GetBatchFilePath(fileName);
         string plyCsvPath = GetBatchFilePath(PlyFileName());
+        string pgnPath = GetBatchFilePath(PgnFileName());
         bool gameFileExists = File.Exists(gameCsvPath);
         bool plyFileExists = File.Exists(plyCsvPath);
         string timestamp = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
@@ -295,8 +296,15 @@ public class CsvRecorder : MonoBehaviour
             }
         }
 
+        using (var writer = new StreamWriter(pgnPath, true))
+        {
+            writer.WriteLine(BuildPgn(timestamp, result, resultType));
+            writer.WriteLine();
+        }
+
         Debug.Log("AI vs AI game CSV saved to " + gameCsvPath, this);
         Debug.Log("AI vs AI ply CSV saved to " + plyCsvPath, this);
+        Debug.Log("AI vs AI PGN saved to " + pgnPath, this);
     }
 
     private void WriteSummaryCsv(int completedGames)
@@ -405,6 +413,97 @@ public class CsvRecorder : MonoBehaviour
             recordedMove.fenAfter);
     }
 
+    private string BuildPgn(string timestamp, string result, GameResultType resultType)
+    {
+        string resultNotation = ResultNotation(resultType);
+        var builder = new System.Text.StringBuilder(1024);
+        builder.AppendLine(PgnTag("Event", "Poorfish AI vs AI"));
+        builder.AppendLine(PgnTag("Site", "Poorfish"));
+        builder.AppendLine(PgnTag("Date", DateTime.UtcNow.ToString("yyyy.MM.dd", CultureInfo.InvariantCulture)));
+        builder.AppendLine(PgnTag("Round", currentGameNumber.ToString(CultureInfo.InvariantCulture)));
+        builder.AppendLine(PgnTag("White", whiteProfileName));
+        builder.AppendLine(PgnTag("Black", blackProfileName));
+        builder.AppendLine(PgnTag("Result", resultNotation));
+        builder.AppendLine(PgnTag("GameId", matchId));
+        builder.AppendLine(PgnTag("BatchId", batchId));
+        builder.AppendLine(PgnTag("UTCDateTime", timestamp));
+        builder.AppendLine(PgnTag("Termination", result));
+        if (!string.IsNullOrWhiteSpace(startingFen))
+        {
+            builder.AppendLine(PgnTag("FEN", startingFen));
+            builder.AppendLine(PgnTag("SetUp", "1"));
+        }
+
+        builder.AppendLine();
+        AppendPgnMovetext(builder, resultNotation);
+        return builder.ToString();
+    }
+
+    private void AppendPgnMovetext(System.Text.StringBuilder builder, string resultNotation)
+    {
+        for (int i = 0; i < recordedMoves.Count; i++)
+        {
+            RecordedMove recordedMove = recordedMoves[i];
+            bool whiteMove = recordedMove.sideToMove == PieceColor.White.ToString();
+            if (whiteMove)
+            {
+                builder.Append(recordedMove.moveNumber);
+                builder.Append(". ");
+            }
+            else if (i == 0)
+            {
+                builder.Append(recordedMove.moveNumber);
+                builder.Append("... ");
+            }
+
+            builder.Append(PgnMoveText(recordedMove));
+            builder.Append(' ');
+            builder.Append(PgnComment(recordedMove));
+            builder.Append(' ');
+        }
+
+        builder.Append(resultNotation);
+    }
+
+    private static string PgnMoveText(RecordedMove recordedMove)
+    {
+        return string.IsNullOrWhiteSpace(recordedMove.moveUci) ? "0000" : recordedMove.moveUci;
+    }
+
+    private static string PgnComment(RecordedMove recordedMove)
+    {
+        return "{"
+            + "eval=" + recordedMove.evaluation.ToString(CultureInfo.InvariantCulture)
+            + " depth=" + recordedMove.depth.ToString(CultureInfo.InvariantCulture)
+            + " nodes=" + recordedMove.nodesSearched.ToString(CultureInfo.InvariantCulture)
+            + " timeMs=" + recordedMove.timeMs.ToString("F1", CultureInfo.InvariantCulture)
+            + " algo=" + PgnSafeCommentText(recordedMove.searchAlgorithm)
+            + " book=" + recordedMove.usedOpeningBook.ToString()
+            + "}";
+    }
+
+    private static string PgnTag(string tagName, string value)
+    {
+        return "[" + tagName + " \"" + EscapePgnTagValue(value) + "\"]";
+    }
+
+    private static string EscapePgnTagValue(string value)
+    {
+        return string.IsNullOrEmpty(value)
+            ? string.Empty
+            : value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+    }
+
+    private static string PgnSafeCommentText(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "none";
+        }
+
+        return value.Replace("{", "(").Replace("}", ")").Replace("\n", " ");
+    }
+
     private static string ToCsvLine(params string[] values)
     {
         string[] escapedValues = new string[values.Length];
@@ -432,6 +531,12 @@ public class CsvRecorder : MonoBehaviour
         }
 
         return baseName + "_plies" + extension;
+    }
+
+    private string PgnFileName()
+    {
+        string baseName = Path.GetFileNameWithoutExtension(fileName);
+        return (string.IsNullOrWhiteSpace(baseName) ? "matches" : baseName) + ".pgn";
     }
 
     private static string GetProjectRootPath()

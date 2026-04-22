@@ -153,5 +153,11 @@ public partial class GameManager
         }
 
         MoveApplied?.Invoke(startGridPoint, destination);
+        PlyCount++;
+
+        if (PlyCount >= MaxFullMoves * 2)
+        {
+            EndGame("Draw by " + MaxFullMoves + "-move limit.", GameResultType.DrawOther);
+        }
     }
 }

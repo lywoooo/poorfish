@@ -25,8 +25,8 @@ public struct EvaluationWeights
     {
         materialWeight = 100,
         pieceSquareWeight = 100,
-        mobilityWeight = 0,
-        developmentWeight = 0,
+        mobilityWeight = 15,
+        developmentWeight = 50,
         drawPenalty = 60,
         repetitionPenalty = 45,
         endgameMateWeight = 100,

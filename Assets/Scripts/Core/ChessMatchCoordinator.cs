@@ -24,6 +24,7 @@ public class ChessMatchCoordinator : MonoBehaviour
     [SerializeField] private string aiVsAiCsvFileName = "matches.csv";
     [SerializeField] private bool runAIVsAIBatch = false;
     [SerializeField] private int aiVsAiBatchGameCount = 100;
+    [SerializeField] private int maxFullMovesPerGame = 100;
     [SerializeField] private bool rerunStalematesInBatch = false;
     [SerializeField] private float aiVsAiRestartDelay = 0.35f;
     [SerializeField] private GameManager gameManager;
@@ -140,6 +141,11 @@ public class ChessMatchCoordinator : MonoBehaviour
                 batchRestartQueued = false;
                 csvRecorder.Configure(gameManager, shouldRecord, aiVsAiCsvFileName, aiControllers, plannedGames);
             }
+        }
+
+        if (gameManager != null)
+        {
+            gameManager.MaxFullMoves = maxFullMovesPerGame;
         }
 
         switch (matchMode)
@@ -282,6 +288,7 @@ public class ChessMatchCoordinator : MonoBehaviour
         int gameCount,
         bool recordCsv,
         string csvFileName,
+        int maxFullMoves,
         bool rerunStalemates,
         float restartDelay)
     {
@@ -291,6 +298,7 @@ public class ChessMatchCoordinator : MonoBehaviour
         aiVsAiCsvFileName = string.IsNullOrWhiteSpace(csvFileName) ? "matches.csv" : csvFileName.Trim();
         runAIVsAIBatch = true;
         aiVsAiBatchGameCount = Mathf.Max(1, gameCount);
+        maxFullMovesPerGame = Mathf.Max(1, maxFullMoves);
         rerunStalematesInBatch = rerunStalemates;
         aiVsAiRestartDelay = Mathf.Max(0f, restartDelay);
         AssignEngineProfiles(whiteProfile, blackProfile);

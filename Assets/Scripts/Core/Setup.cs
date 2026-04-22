@@ -81,6 +81,7 @@ public partial class GameManager
         BlackQueensideRookMoved = false;
         EnPassantTarget = null;
         HalfmoveClock = 0;
+        PlyCount = 0;
         HasLastAppliedMove = false;
         LastAppliedMove = default;
         HasLastWhiteAppliedMove = false;

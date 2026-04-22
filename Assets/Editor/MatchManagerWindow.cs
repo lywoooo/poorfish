@@ -8,11 +8,11 @@ public class MatchManagerWindow : EditorWindow
     private EngineProfile whiteProfile;
     private EngineProfile blackProfile;
     private int gameCount = 50;
+    private int maxFullMoves = 100;
     private bool recordCsv = true;
     private string csvFileName = "experiment_matches.csv";
     private bool rerunStalemates;
     private float restartDelay = 0.05f;
-    private int parallelWorkers = 2;
     private Vector2 scrollPosition;
     private GUIStyle titleStyle;
     private GUIStyle accentStyle;
@@ -82,6 +82,7 @@ public class MatchManagerWindow : EditorWindow
             gameCount,
             recordCsv,
             csvFileName,
+            maxFullMoves,
             rerunStalemates,
             restartDelay);
 
@@ -94,30 +95,6 @@ public class MatchManagerWindow : EditorWindow
         if (!Application.isPlaying)
         {
             UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
-        }
-    }
-
-    private void LogWorkerPlan(int gamesPerWorker)
-    {
-        string baseName = string.IsNullOrWhiteSpace(csvFileName)
-            ? "experiment_matches"
-            : System.IO.Path.GetFileNameWithoutExtension(csvFileName);
-        string extension = string.IsNullOrWhiteSpace(System.IO.Path.GetExtension(csvFileName))
-            ? ".csv"
-            : System.IO.Path.GetExtension(csvFileName);
-
-        for (int worker = 1; worker <= parallelWorkers; worker++)
-        {
-            Debug.Log(
-                "Worker "
-                + worker.ToString()
-                + ": games="
-                + gamesPerWorker.ToString()
-                + ", csv="
-                + baseName
-                + "_worker"
-                + worker.ToString("00")
-                + extension);
         }
     }
 
@@ -164,7 +141,7 @@ public class MatchManagerWindow : EditorWindow
             GUILayout.Space(24f);
             EditorGUILayout.LabelField("Settings:", labelStyle);
             EditorGUILayout.LabelField("Max think time: " + ThinkTimeMilliseconds() + " ms", labelStyle);
-            EditorGUILayout.LabelField("Max game length: current game rules", labelStyle);
+            EditorGUILayout.LabelField("Max game length: " + maxFullMoves + " moves", labelStyle);
             EditorGUILayout.LabelField("CSV: " + (recordCsv ? csvFileName : "off"), mutedStyle);
 
             GUILayout.Space(30f);
@@ -206,6 +183,7 @@ public class MatchManagerWindow : EditorWindow
 
         GUILayout.Space(8f);
         gameCount = Mathf.Max(1, EditorGUILayout.IntField("Games", gameCount));
+        maxFullMoves = Mathf.Max(1, EditorGUILayout.IntField("Max Moves", maxFullMoves));
         restartDelay = Mathf.Max(0f, EditorGUILayout.FloatField("Restart Delay", restartDelay));
         recordCsv = EditorGUILayout.Toggle("Record CSV", recordCsv);
         using (new EditorGUI.DisabledScope(!recordCsv))
@@ -251,15 +229,6 @@ public class MatchManagerWindow : EditorWindow
         EditorGUILayout.LabelField("Play mode: " + Application.isPlaying, labelStyle);
         EditorGUILayout.LabelField("Register " + BlackName, mutedStyle);
         EditorGUILayout.LabelField("Register " + WhiteName, mutedStyle);
-
-        GUILayout.Space(10f);
-        parallelWorkers = Mathf.Max(1, EditorGUILayout.IntField("Parallel Workers", parallelWorkers));
-        int gamesPerWorker = Mathf.CeilToInt(gameCount / (float)Mathf.Max(1, parallelWorkers));
-        EditorGUILayout.LabelField("Parallel: " + parallelWorkers + " workers x about " + gamesPerWorker + " games", mutedStyle);
-        if (GUILayout.Button("Log Worker Files", buttonStyle, GUILayout.Height(24f)))
-        {
-            LogWorkerPlan(gamesPerWorker);
-        }
     }
 
     private void DrawBoardColumn()
