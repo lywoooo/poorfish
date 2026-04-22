@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d3977b4a63aac4a9381a33be912fbe85, type: 3}
   m_Name: V9_OpeningBook
   m_EditorClassIdentifier: 
-  profileName: Baseline
+  profileName: V9_OpeningBook
   searchDepth: 6
   maxThinkTimeSeconds: 1.5
   logSearchStats: 1

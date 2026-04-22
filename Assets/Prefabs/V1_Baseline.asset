@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d3977b4a63aac4a9381a33be912fbe85, type: 3}
   m_Name: V1_Baseline
   m_EditorClassIdentifier: 
-  profileName: 'V1_Baseline '
+  profileName: V1_Baseline
   searchDepth: 6
   maxThinkTimeSeconds: 1.5
   logSearchStats: 1
@@ -21,13 +21,14 @@ MonoBehaviour:
   useTranspositionTable: 0
   useAdaptiveEndgameDepth: 0
   useImmediateCheckmateShortcut: 0
-  useOpeningBook: 1
+  useOpeningBook: 0
   evaluationWeights:
     materialWeight: 100
-    pieceSquareWeight: 100
+    pieceSquareWeight: 0
     mobilityWeight: 0
+    developmentWeight: 0
     drawPenalty: 60
     repetitionPenalty: 45
-    endgameMateWeight: 100
+    endgameMateWeight: 0
     kingEdgeWeight: 80
     kingDistanceWeight: 20

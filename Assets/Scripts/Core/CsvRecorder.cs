@@ -180,7 +180,7 @@ public class CsvRecorder : MonoBehaviour
             }
 
             string profileName = aiController.engineProfile != null && !string.IsNullOrWhiteSpace(aiController.engineProfile.profileName)
-                ? aiController.engineProfile.profileName
+                ? aiController.engineProfile.profileName.Trim()
                 : aiController.fallbackSettings.profileName;
 
             if (string.IsNullOrWhiteSpace(profileName))

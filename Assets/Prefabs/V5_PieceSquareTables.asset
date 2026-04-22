@@ -12,23 +12,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d3977b4a63aac4a9381a33be912fbe85, type: 3}
   m_Name: V5_PieceSquareTables
   m_EditorClassIdentifier: 
-  profileName: Baseline
+  profileName: V5_PieceSquareTables
   searchDepth: 6
   maxThinkTimeSeconds: 1.5
   logSearchStats: 1
   useAlphaBetaPruning: 1
   useMoveOrdering: 1
   useTranspositionTable: 1
-  useAdaptiveEndgameDepth: 1
-  useImmediateCheckmateShortcut: 1
-  useOpeningBook: 1
+  useAdaptiveEndgameDepth: 0
+  useImmediateCheckmateShortcut: 0
+  useOpeningBook: 0
   evaluationWeights:
     materialWeight: 100
     pieceSquareWeight: 100
-    mobilityWeight: 15
-    developmentWeight: 50
+    mobilityWeight: 0
+    developmentWeight: 0
     drawPenalty: 60
     repetitionPenalty: 45
-    endgameMateWeight: 100
+    endgameMateWeight: 0
     kingEdgeWeight: 80
     kingDistanceWeight: 20

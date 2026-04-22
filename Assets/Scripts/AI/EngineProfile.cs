@@ -27,7 +27,7 @@ public class EngineProfile : ScriptableObject
     {
         return new EngineSettings
         {
-            profileName = string.IsNullOrWhiteSpace(profileName) ? name : profileName,
+            profileName = string.IsNullOrWhiteSpace(profileName) ? name : profileName.Trim(),
             searchDepth = searchDepth,
             maxThinkTimeSeconds = maxThinkTimeSeconds,
             logSearchStats = logSearchStats,

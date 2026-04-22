@@ -181,7 +181,7 @@ public class ChessMatchCoordinator : MonoBehaviour
         {
             if (recordAIVsAIToCsv && csvRecorder != null)
             {
-                csvRecorder.FinalizeBatch(completedBatchGames);
+                StartCoroutine(FinalizeBatchAfterRecorders());
             }
 
             if (runAIVsAIBatch)
@@ -194,6 +194,16 @@ public class ChessMatchCoordinator : MonoBehaviour
         if (runAIVsAIBatch && !batchRestartQueued)
         {
             StartCoroutine(RestartBatchMatch());
+        }
+    }
+
+    private IEnumerator FinalizeBatchAfterRecorders()
+    {
+        yield return null;
+
+        if (csvRecorder != null)
+        {
+            csvRecorder.FinalizeBatch(completedBatchGames);
         }
     }
 

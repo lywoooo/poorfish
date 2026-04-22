@@ -110,7 +110,7 @@ public class MatchManagerWindow : EditorWindow
             return fallback;
         }
 
-        return string.IsNullOrWhiteSpace(profile.profileName) ? profile.name : profile.profileName;
+        return string.IsNullOrWhiteSpace(profile.profileName) ? profile.name : profile.profileName.Trim();
     }
 
     private void DrawMainPanel()
@@ -135,8 +135,7 @@ public class MatchManagerWindow : EditorWindow
 
             GUILayout.Space(28f);
             EditorGUILayout.LabelField("Game number: " + CompletedGames + " / " + Mathf.Max(1, gameCount), labelStyle);
-            EditorGUILayout.LabelField(BlackName + ": Wins: " + BlackWins + " Losses: " + WhiteWins + " Draws: " + Draws, labelStyle);
-            EditorGUILayout.LabelField(WhiteName + ": Wins: " + WhiteWins + " Losses: " + BlackWins + " Draws: " + Draws, labelStyle);
+            DrawScoreboard();
 
             GUILayout.Space(24f);
             EditorGUILayout.LabelField("Settings:", labelStyle);
@@ -210,6 +209,19 @@ public class MatchManagerWindow : EditorWindow
         {
             EditorApplication.ExitPlaymode();
         }
+    }
+
+    private void DrawScoreboard()
+    {
+        if (WhiteName == BlackName)
+        {
+            EditorGUILayout.LabelField("Mirror match: " + WhiteName, labelStyle);
+            EditorGUILayout.LabelField("White-side wins: " + WhiteWins + "  Black-side wins: " + BlackWins + "  Draws: " + Draws, labelStyle);
+            return;
+        }
+
+        EditorGUILayout.LabelField(BlackName + ": Wins: " + BlackWins + " Losses: " + WhiteWins + " Draws: " + Draws, labelStyle);
+        EditorGUILayout.LabelField(WhiteName + ": Wins: " + WhiteWins + " Losses: " + BlackWins + " Draws: " + Draws, labelStyle);
     }
 
     private void DrawProfileField(string label, ref EngineProfile profile)
