@@ -1,4 +1,6 @@
 using System.Collections;
+using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 
 public enum ChessMatchMode
@@ -26,6 +28,8 @@ public class ChessMatchCoordinator : MonoBehaviour
     [SerializeField] private int aiVsAiBatchGameCount = 100;
     [SerializeField] private int maxFullMovesPerGame = 100;
     [SerializeField] private bool alternateColorsInBatch = true;
+    [SerializeField] private bool useEqualPositionFenStarts = false;
+    [SerializeField] private string equalPositionFenResourceName = "equal_positions";
     [SerializeField] private bool rerunStalematesInBatch = false;
     [SerializeField] private float aiVsAiRestartDelay = 0.35f;
     [SerializeField] private GameManager gameManager;
@@ -43,6 +47,9 @@ public class ChessMatchCoordinator : MonoBehaviour
     private int whiteSideWins;
     private int blackSideWins;
     private bool batchRestartQueued;
+    private readonly List<string> equalPositionFens = new List<string>(1024);
+    private string loadedEqualPositionResourceName;
+    private string currentBatchStartingFen;
 
     public ChessMatchMode MatchMode => matchMode;
     public int CompletedBatchGames => completedBatchGames;
@@ -138,7 +145,7 @@ public class ChessMatchCoordinator : MonoBehaviour
         if (Application.isPlaying && csvRecorder != null)
         {
             bool shouldRecord = matchMode == ChessMatchMode.AIVsAI && recordAIVsAIToCsv;
-            int plannedGames = matchMode == ChessMatchMode.AIVsAI && runAIVsAIBatch ? Mathf.Max(1, aiVsAiBatchGameCount) : 1;
+            int plannedGames = matchMode == ChessMatchMode.AIVsAI && runAIVsAIBatch ? EffectiveBatchTargetGameCount() : 1;
             if (resetBatchProgress)
             {
                 completedBatchGames = 0;
@@ -148,6 +155,8 @@ public class ChessMatchCoordinator : MonoBehaviour
                 whiteSideWins = 0;
                 blackSideWins = 0;
                 batchRestartQueued = false;
+                currentBatchStartingFen = null;
+                PrepareStartingFenForBatchGame();
                 AssignEngineProfilesForBatchGame(aiControllers);
                 csvRecorder.Configure(gameManager, shouldRecord, aiVsAiCsvFileName, aiControllers, plannedGames);
             }
@@ -186,7 +195,7 @@ public class ChessMatchCoordinator : MonoBehaviour
             completedBatchGames++;
         }
 
-        int targetGames = runAIVsAIBatch ? Mathf.Max(1, aiVsAiBatchGameCount) : 1;
+        int targetGames = runAIVsAIBatch ? EffectiveBatchTargetGameCount() : 1;
         if (completedBatchGames >= targetGames)
         {
             if (recordAIVsAIToCsv && csvRecorder != null)
@@ -263,6 +272,10 @@ public class ChessMatchCoordinator : MonoBehaviour
             yield break;
         }
 
+        AIController[] aiControllers = GetComponents<AIController>();
+        PrepareStartingFenForBatchGame();
+        AssignEngineProfilesForBatchGame(aiControllers);
+
         gameManager.RestartMatch();
 
         if (moveSelector != null)
@@ -275,16 +288,13 @@ public class ChessMatchCoordinator : MonoBehaviour
             aiController.ResetControllerState();
         }
 
-        AIController[] aiControllers = GetComponents<AIController>();
-        AssignEngineProfilesForBatchGame(aiControllers);
-
         if (csvRecorder != null)
         {
             csvRecorder.BeginNextGame(aiControllers);
         }
 
         ApplyMode(false);
-        Debug.Log("Starting AI vs AI game " + (completedBatchGames + 1) + " of " + Mathf.Max(1, aiVsAiBatchGameCount) + ".", this);
+        Debug.Log("Starting AI vs AI game " + (completedBatchGames + 1) + " of " + EffectiveBatchTargetGameCount() + ".", this);
         batchRestartQueued = false;
     }
 
@@ -332,20 +342,28 @@ public class ChessMatchCoordinator : MonoBehaviour
         int maxFullMoves,
         bool alternateColors,
         bool rerunStalemates,
-        float restartDelay)
+        float restartDelay,
+        bool useEqualPositionFens = false,
+        string equalPositionFenResource = "equal_positions")
     {
         CacheReferences();
         matchMode = ChessMatchMode.AIVsAI;
         recordAIVsAIToCsv = recordCsv;
         aiVsAiCsvFileName = string.IsNullOrWhiteSpace(csvFileName) ? "matches.csv" : csvFileName.Trim();
         runAIVsAIBatch = true;
-        aiVsAiBatchGameCount = Mathf.Max(1, gameCount);
+        useEqualPositionFenStarts = useEqualPositionFens;
+        equalPositionFenResourceName = string.IsNullOrWhiteSpace(equalPositionFenResource)
+            ? "equal_positions"
+            : equalPositionFenResource.Trim();
+        aiVsAiBatchGameCount = NormalizeBatchGameCount(gameCount);
         maxFullMovesPerGame = Mathf.Max(1, maxFullMoves);
         alternateColorsInBatch = alternateColors;
         rerunStalematesInBatch = rerunStalemates;
         aiVsAiRestartDelay = Mathf.Max(0f, restartDelay);
         configuredWhiteProfile = whiteProfile;
         configuredBlackProfile = blackProfile;
+        currentBatchStartingFen = null;
+        PrepareStartingFenForBatchGame();
         AssignEngineProfilesForBatchGame(GetComponents<AIController>());
 
         if (Application.isPlaying)
@@ -370,9 +388,124 @@ public class ChessMatchCoordinator : MonoBehaviour
 
     private bool ShouldSwapProfilesForCurrentGame()
     {
-        return alternateColorsInBatch
+        bool shouldPairColors = useEqualPositionFenStarts || alternateColorsInBatch;
+        return shouldPairColors
             && configuredWhiteProfile != configuredBlackProfile
             && completedBatchGames % 2 == 1;
+    }
+
+    private int NormalizeBatchGameCount(int gameCount)
+    {
+        int normalizedCount = Mathf.Max(useEqualPositionFenStarts ? 2 : 1, gameCount);
+        if (useEqualPositionFenStarts && normalizedCount % 2 == 1)
+        {
+            normalizedCount++;
+        }
+
+        return normalizedCount;
+    }
+
+    private int EffectiveBatchTargetGameCount()
+    {
+        return NormalizeBatchGameCount(aiVsAiBatchGameCount);
+    }
+
+    private void PrepareStartingFenForBatchGame()
+    {
+        if (gameManager == null)
+        {
+            return;
+        }
+
+        if (!useEqualPositionFenStarts)
+        {
+            currentBatchStartingFen = null;
+            gameManager.ClearRuntimeStartingFen();
+            return;
+        }
+
+        bool shouldPickNewFen = string.IsNullOrWhiteSpace(currentBatchStartingFen)
+            || (completedBatchGames > 0 && completedBatchGames % 2 == 0);
+        if (shouldPickNewFen)
+        {
+            if (!TryPickRandomEqualPositionFen(out currentBatchStartingFen))
+            {
+                gameManager.ClearRuntimeStartingFen();
+                Debug.LogWarning("Could not load an equal-position FEN. Falling back to the configured/default start.", this);
+                return;
+            }
+        }
+
+        gameManager.SetRuntimeStartingFen(currentBatchStartingFen);
+    }
+
+    private bool TryPickRandomEqualPositionFen(out string fen)
+    {
+        fen = null;
+        EnsureEqualPositionFensLoaded();
+        if (equalPositionFens.Count == 0)
+        {
+            return false;
+        }
+
+        int attempts = Mathf.Min(20, equalPositionFens.Count);
+        for (int i = 0; i < attempts; i++)
+        {
+            string candidate = equalPositionFens[Random.Range(0, equalPositionFens.Count)];
+            if (FEN.TryLoadFen(candidate, out _))
+            {
+                fen = candidate;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void EnsureEqualPositionFensLoaded()
+    {
+        string resourceName = string.IsNullOrWhiteSpace(equalPositionFenResourceName)
+            ? "equal_positions"
+            : equalPositionFenResourceName.Trim();
+
+        if (loadedEqualPositionResourceName == resourceName && equalPositionFens.Count > 0)
+        {
+            return;
+        }
+
+        loadedEqualPositionResourceName = resourceName;
+        equalPositionFens.Clear();
+
+        string fenText = LoadEqualPositionFenText(resourceName);
+        if (string.IsNullOrWhiteSpace(fenText))
+        {
+            return;
+        }
+
+        string[] lines = fenText.Split('\n');
+        foreach (string line in lines)
+        {
+            string trimmedLine = line.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedLine) || trimmedLine.StartsWith("#"))
+            {
+                continue;
+            }
+
+            equalPositionFens.Add(trimmedLine);
+        }
+    }
+
+    private string LoadEqualPositionFenText(string resourceName)
+    {
+        TextAsset fenAsset = Resources.Load<TextAsset>(resourceName);
+        if (fenAsset != null)
+        {
+            return fenAsset.text;
+        }
+
+        string fileName = Path.HasExtension(resourceName) ? resourceName : resourceName + ".fens";
+        string filePath = Path.Combine(Application.dataPath, "Resources", fileName);
+        return File.Exists(filePath) ? File.ReadAllText(filePath) : null;
     }
 
     private void AssignEngineProfiles(EngineProfile whiteProfile, EngineProfile blackProfile, AIController[] aiControllers)

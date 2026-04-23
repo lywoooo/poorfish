@@ -322,11 +322,11 @@ MonoBehaviour:
   moveDelay: 0.1
   aiPickupDuration: 0.0012
   aiPickupLiftRatio: 0.18
-  engineProfile: {fileID: 11400000, guid: 5f37a89d5022547fe9ffdbc12e3de95b, type: 2}
+  engineProfile: {fileID: 11400000, guid: d8f66e21db15c4334b5b71c6ce6f6704, type: 2}
   fallbackSettings:
     profileName: Baseline
     searchDepth: 6
-    maxThinkTimeSeconds: 100
+    maxThinkTimeSeconds: 0
     logSearchStats: 1
     useAlphaBetaPruning: 1
     useMoveOrdering: 1
@@ -402,6 +402,8 @@ MonoBehaviour:
   aiVsAiBatchGameCount: 100
   maxFullMovesPerGame: 100
   alternateColorsInBatch: 1
+  useEqualPositionFenStarts: 1
+  equalPositionFenResourceName: equal_positions
   rerunStalematesInBatch: 0
   aiVsAiRestartDelay: 0.05
   gameManager: {fileID: 516697451}
@@ -409,7 +411,7 @@ MonoBehaviour:
   boardUI: {fileID: 516697440}
   moveSelector: {fileID: 516697444}
   autoConfigureInEditor: 1
-  configuredWhiteProfile: {fileID: 11400000, guid: 5f37a89d5022547fe9ffdbc12e3de95b,
+  configuredWhiteProfile: {fileID: 11400000, guid: d8f66e21db15c4334b5b71c6ce6f6704,
     type: 2}
   configuredBlackProfile: {fileID: 11400000, guid: d8f66e21db15c4334b5b71c6ce6f6704,
     type: 2}

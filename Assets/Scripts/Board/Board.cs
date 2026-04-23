@@ -183,6 +183,19 @@ public class Board : MonoBehaviour
         }
     }
 
+    public void StopAllMoveAnimations()
+    {
+        foreach (Coroutine animation in moveAnimations.Values)
+        {
+            if (animation != null)
+            {
+                StopCoroutine(animation);
+            }
+        }
+
+        moveAnimations.Clear();
+    }
+
     private void ForgetPiece(GameObject piece)
     {
         if (piece == null)
@@ -198,11 +211,21 @@ public class Board : MonoBehaviour
 
     private System.Collections.IEnumerator AnimatePieceMove(GameObject piece, Vector3 targetPosition)
     {
+        if (piece == null)
+        {
+            yield break;
+        }
+
         Vector3 startPosition = piece.transform.position;
         float elapsed = 0f;
 
         while (elapsed < moveAnimationDuration)
         {
+            if (piece == null)
+            {
+                yield break;
+            }
+
             elapsed += Time.deltaTime;
             float t = Mathf.Clamp01(elapsed / moveAnimationDuration);
             float easedT = 1f - Mathf.Pow(1f - t, 3f);
@@ -210,7 +233,10 @@ public class Board : MonoBehaviour
             yield return null;
         }
 
-        piece.transform.position = targetPosition;
-        moveAnimations.Remove(piece);
+        if (piece != null)
+        {
+            piece.transform.position = targetPosition;
+            moveAnimations.Remove(piece);
+        }
     }
 }

@@ -12,6 +12,8 @@ public class MatchManagerWindow : EditorWindow
     private bool recordCsv = true;
     private string csvFileName = "experiment_matches.csv";
     private bool alternateColors = true;
+    private bool useEqualPositionFens = true;
+    private string equalPositionFenResource = "equal_positions";
     private bool rerunStalemates;
     private float restartDelay = 0.05f;
     private Vector2 scrollPosition;
@@ -25,8 +27,6 @@ public class MatchManagerWindow : EditorWindow
     private Texture2D panelTexture;
     private Texture2D inputTexture;
     private Texture2D buttonTexture;
-    private Texture2D lightSquareTexture;
-    private Texture2D darkSquareTexture;
 
     [MenuItem("Poorfish/Match Manager")]
     public static void ShowWindow()
@@ -86,7 +86,9 @@ public class MatchManagerWindow : EditorWindow
             maxFullMoves,
             alternateColors,
             rerunStalemates,
-            restartDelay);
+            restartDelay,
+            useEqualPositionFens,
+            equalPositionFenResource);
 
         EditorUtility.SetDirty(coordinator);
         foreach (AIController aiController in coordinator.GetComponents<AIController>())
@@ -136,7 +138,7 @@ public class MatchManagerWindow : EditorWindow
             EditorGUILayout.LabelField(BlackName + " vs " + WhiteName, accentStyle);
 
             GUILayout.Space(28f);
-            EditorGUILayout.LabelField("Game number: " + CompletedGames + " / " + Mathf.Max(1, gameCount), labelStyle);
+            EditorGUILayout.LabelField("Game number: " + CompletedGames + " / " + TargetGameCount(), labelStyle);
             DrawScoreboard();
 
             GUILayout.Space(24f);
@@ -186,7 +188,17 @@ public class MatchManagerWindow : EditorWindow
         gameCount = Mathf.Max(1, EditorGUILayout.IntField("Games", gameCount));
         maxFullMoves = Mathf.Max(1, EditorGUILayout.IntField("Max Moves", maxFullMoves));
         restartDelay = Mathf.Max(0f, EditorGUILayout.FloatField("Restart Delay", restartDelay));
-        alternateColors = EditorGUILayout.Toggle("Alternate Colors", alternateColors);
+        useEqualPositionFens = EditorGUILayout.Toggle("Equal FEN Starts", useEqualPositionFens);
+        using (new EditorGUI.DisabledScope(useEqualPositionFens))
+        {
+            alternateColors = EditorGUILayout.Toggle("Alternate Colors", alternateColors);
+        }
+
+        using (new EditorGUI.DisabledScope(!useEqualPositionFens))
+        {
+            equalPositionFenResource = EditorGUILayout.TextField("FEN Resource", equalPositionFenResource);
+        }
+
         recordCsv = EditorGUILayout.Toggle("Record CSV", recordCsv);
         using (new EditorGUI.DisabledScope(!recordCsv))
         {
@@ -267,7 +279,10 @@ public class MatchManagerWindow : EditorWindow
                     rect.y + rank * squareSize,
                     squareSize,
                     squareSize);
-                GUI.DrawTexture(square, ((rank + file) & 1) == 0 ? lightSquareTexture : darkSquareTexture);
+                Color squareColor = ((rank + file) & 1) == 0
+                    ? new Color(0.86f, 0.79f, 0.68f)
+                    : new Color(0.57f, 0.41f, 0.33f);
+                EditorGUI.DrawRect(square, squareColor);
             }
         }
     }
@@ -304,6 +319,12 @@ public class MatchManagerWindow : EditorWindow
         return 0;
     }
 
+    private int TargetGameCount()
+    {
+        int target = Mathf.Max(useEqualPositionFens ? 2 : 1, gameCount);
+        return useEqualPositionFens && target % 2 == 1 ? target + 1 : target;
+    }
+
     private int WhiteWins => coordinator != null ? coordinator.WhiteWins : 0;
 
     private int BlackWins => coordinator != null ? coordinator.BlackWins : 0;
@@ -312,11 +333,20 @@ public class MatchManagerWindow : EditorWindow
 
     private void EnsureStyles()
     {
-        panelTexture ??= MakeTexture(new Color(0.13f, 0.14f, 0.14f));
-        inputTexture ??= MakeTexture(new Color(0.82f, 0.82f, 0.82f));
-        buttonTexture ??= MakeTexture(new Color(0.28f, 0.28f, 0.28f));
-        lightSquareTexture ??= MakeTexture(new Color(0.86f, 0.79f, 0.68f));
-        darkSquareTexture ??= MakeTexture(new Color(0.57f, 0.41f, 0.33f));
+        if (panelTexture == null)
+        {
+            panelTexture = MakeTexture(new Color(0.13f, 0.14f, 0.14f));
+        }
+
+        if (inputTexture == null)
+        {
+            inputTexture = MakeTexture(new Color(0.82f, 0.82f, 0.82f));
+        }
+
+        if (buttonTexture == null)
+        {
+            buttonTexture = MakeTexture(new Color(0.28f, 0.28f, 0.28f));
+        }
 
         titleStyle ??= new GUIStyle(EditorStyles.boldLabel)
         {

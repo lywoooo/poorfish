@@ -7,6 +7,19 @@ public partial class GameManager
     {
         TrySetupPositionFromFen(defaultFENString);
     }
+
+    private string runtimeStartingFen;
+
+    public void SetRuntimeStartingFen(string fen)
+    {
+        runtimeStartingFen = string.IsNullOrWhiteSpace(fen) ? null : fen.Trim();
+    }
+
+    public void ClearRuntimeStartingFen()
+    {
+        runtimeStartingFen = null;
+    }
+
     public void RestartMatch()
     {
         if (!ValidateConfiguration())
@@ -16,6 +29,16 @@ public partial class GameManager
         }
 
         ResetMatchState();
+
+        if (!string.IsNullOrWhiteSpace(runtimeStartingFen))
+        {
+            if (TrySetupPositionFromFen(runtimeStartingFen))
+            {
+                return;
+            }
+
+            Debug.LogWarning("Invalid runtime starting FEN. Falling back to configured/default starting position.", this);
+        }
 
         if (!string.IsNullOrWhiteSpace(loadFENString))
         {
@@ -173,6 +196,11 @@ public partial class GameManager
 
     private void ClearBoardState()
     {
+        if (board != null)
+        {
+            board.StopAllMoveAnimations();
+        }
+
         var trackedPieces = new List<GameObject>(piecePositions.Keys);
         foreach (GameObject trackedPiece in trackedPieces)
         {
