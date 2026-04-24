@@ -19,8 +19,8 @@ MonoBehaviour:
   useAlphaBetaPruning: 1
   useMoveOrdering: 1
   useTranspositionTable: 1
-  useAdaptiveEndgameDepth: 0
-  useImmediateCheckmateShortcut: 0
+  useAdaptiveEndgameDepth: 1
+  useImmediateCheckmateShortcut: 1
   useOpeningBook: 0
   evaluationWeights:
     materialWeight: 100
@@ -29,6 +29,6 @@ MonoBehaviour:
     developmentWeight: 0
     drawPenalty: 60
     repetitionPenalty: 45
-    endgameMateWeight: 0
+    endgameMateWeight: 35
     kingEdgeWeight: 80
     kingDistanceWeight: 20

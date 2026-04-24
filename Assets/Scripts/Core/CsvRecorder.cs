@@ -10,7 +10,8 @@ public class CsvRecorder : MonoBehaviour
     private static readonly string[] GameCsvColumns =
     {
         "batch_id", "game_id", "game_number", "timestamp_utc", "engine_build", "white_engine", "black_engine",
-        "starting_fen", "total_plies", "total_moves", "result", "termination_reason", "result_type"
+        "white_techniques", "black_techniques", "use_equal_fen_starts", "equal_fen_resource", "fixed_batch_seed",
+        "batch_seed", "starting_fen", "total_plies", "total_moves", "result", "termination_reason", "result_type"
     };
 
     private static readonly string[] PlyCsvColumns =
@@ -24,7 +25,9 @@ public class CsvRecorder : MonoBehaviour
     private static readonly string[] SummaryCsvColumns =
     {
         "batch_id", "timestamp_utc", "white_profile", "black_profile", "target_completed_games",
-        "completed_games", "actual_games_played", "white_wins", "white_losses", "black_wins", "black_losses", "draws"
+        "completed_games", "actual_games_played", "white_wins", "white_losses", "black_wins", "black_losses", "draws",
+        "white_techniques", "black_techniques", "use_equal_fen_starts", "equal_fen_resource", "alternate_colors",
+        "max_full_moves", "fixed_batch_seed", "batch_seed"
     };
 
     private readonly List<RecordedMove> recordedMoves = new List<RecordedMove>(256);
@@ -45,6 +48,14 @@ public class CsvRecorder : MonoBehaviour
     private int draws;
     private int moveNumber;
     private string startingFen;
+    private string whiteTechniqueSummary = string.Empty;
+    private string blackTechniqueSummary = string.Empty;
+    private bool batchUsesEqualFenStarts;
+    private string batchEqualFenResource = string.Empty;
+    private bool batchAlternateColors;
+    private int batchMaxFullMoves;
+    private bool batchUsesFixedSeed;
+    private int batchSeedValue;
     private PendingEngineMove pendingEngineMove;
 
     private struct RecordedMove
@@ -95,12 +106,29 @@ public class CsvRecorder : MonoBehaviour
         GameManager.GameEnded -= HandleGameEnded;
     }
 
-    public void Configure(GameManager manager, bool shouldRecord, string configuredFileName, AIController[] aiControllers, int plannedGames)
+    public void Configure(
+        GameManager manager,
+        bool shouldRecord,
+        string configuredFileName,
+        AIController[] aiControllers,
+        int plannedGames,
+        bool useEqualFenStarts,
+        string equalFenResource,
+        bool alternateColors,
+        int maxFullMoves,
+        bool usesFixedSeed,
+        int seedValue)
     {
         gameManager = manager;
         recordingEnabled = shouldRecord;
         fileName = string.IsNullOrWhiteSpace(configuredFileName) ? "ai_vs_ai_matches.csv" : configuredFileName.Trim();
         targetCompletedGames = Mathf.Max(1, plannedGames);
+        batchUsesEqualFenStarts = useEqualFenStarts;
+        batchEqualFenResource = string.IsNullOrWhiteSpace(equalFenResource) ? string.Empty : equalFenResource.Trim();
+        batchAlternateColors = alternateColors;
+        batchMaxFullMoves = Mathf.Max(1, maxFullMoves);
+        batchUsesFixedSeed = usesFixedSeed;
+        batchSeedValue = seedValue;
         batchId = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
         batchDirectoryPath = Path.Combine(GetProjectRootPath(), "SelfPlayLogs", batchId);
         currentGameNumber = 0;
@@ -195,13 +223,20 @@ public class CsvRecorder : MonoBehaviour
                 profileName = aiController.aiStartColorBlack ? "Black" : "White";
             }
 
+            EngineSettings settings = aiController.engineProfile != null
+                ? aiController.engineProfile.ToSettings()
+                : aiController.fallbackSettings;
+            string techniqueSummary = settings.TechniqueSummary;
+
             if (aiController.aiStartColorBlack)
             {
                 blackProfileName = profileName;
+                blackTechniqueSummary = techniqueSummary;
             }
             else
             {
                 whiteProfileName = profileName;
+                whiteTechniqueSummary = techniqueSummary;
             }
         }
     }
@@ -338,7 +373,15 @@ public class CsvRecorder : MonoBehaviour
                 FormatInt(blackWins),
                 FormatInt(blackWins),
                 FormatInt(whiteWins),
-                FormatInt(draws)));
+                FormatInt(draws),
+                whiteTechniqueSummary,
+                blackTechniqueSummary,
+                batchUsesEqualFenStarts.ToString(),
+                batchEqualFenResource,
+                batchAlternateColors.ToString(),
+                FormatInt(batchMaxFullMoves),
+                batchUsesFixedSeed.ToString(),
+                FormatInt(batchSeedValue)));
         }
 
         Debug.Log("AI vs AI summary CSV saved to " + summaryPath, this);
@@ -388,6 +431,12 @@ public class CsvRecorder : MonoBehaviour
             Application.version,
             whiteProfileName,
             blackProfileName,
+            whiteTechniqueSummary,
+            blackTechniqueSummary,
+            batchUsesEqualFenStarts.ToString(),
+            batchEqualFenResource,
+            batchUsesFixedSeed.ToString(),
+            FormatInt(batchSeedValue),
             startingFen,
             FormatInt(recordedMoves.Count),
             FormatInt(recordedMoves.Count == 0 ? 0 : FullMoveNumberForPly(recordedMoves.Count)),

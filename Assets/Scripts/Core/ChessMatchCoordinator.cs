@@ -32,6 +32,8 @@ public class ChessMatchCoordinator : MonoBehaviour
     [SerializeField] private string equalPositionFenResourceName = "equal_positions";
     [SerializeField] private bool rerunStalematesInBatch = false;
     [SerializeField] private float aiVsAiRestartDelay = 0.35f;
+    [SerializeField] private bool useFixedBatchSeed = true;
+    [SerializeField] private int batchSeed = 1;
     [SerializeField] private GameManager gameManager;
     [SerializeField] private Board board;
     [SerializeField] private BoardUI boardUI;
@@ -50,6 +52,8 @@ public class ChessMatchCoordinator : MonoBehaviour
     private readonly List<string> equalPositionFens = new List<string>(1024);
     private string loadedEqualPositionResourceName;
     private string currentBatchStartingFen;
+    private System.Random batchFenRandom;
+    private int activeBatchSeed;
 
     public ChessMatchMode MatchMode => matchMode;
     public int CompletedBatchGames => completedBatchGames;
@@ -156,9 +160,21 @@ public class ChessMatchCoordinator : MonoBehaviour
                 blackSideWins = 0;
                 batchRestartQueued = false;
                 currentBatchStartingFen = null;
+                InitializeBatchRandom();
                 PrepareStartingFenForBatchGame();
                 AssignEngineProfilesForBatchGame(aiControllers);
-                csvRecorder.Configure(gameManager, shouldRecord, aiVsAiCsvFileName, aiControllers, plannedGames);
+                csvRecorder.Configure(
+                    gameManager,
+                    shouldRecord,
+                    aiVsAiCsvFileName,
+                    aiControllers,
+                    plannedGames,
+                    useEqualPositionFenStarts,
+                    equalPositionFenResourceName,
+                    alternateColorsInBatch,
+                    maxFullMovesPerGame,
+                    useFixedBatchSeed,
+                    activeBatchSeed);
             }
         }
 
@@ -176,6 +192,10 @@ public class ChessMatchCoordinator : MonoBehaviour
                 return;
             case ChessMatchMode.AIVsAI:
                 ConfigureAIVsAI(aiControllers);
+                if (Application.isPlaying)
+                {
+                    WarnAboutExperimentConfounders(aiControllers);
+                }
                 return;
         }
     }
@@ -344,7 +364,9 @@ public class ChessMatchCoordinator : MonoBehaviour
         bool rerunStalemates,
         float restartDelay,
         bool useEqualPositionFens = false,
-        string equalPositionFenResource = "equal_positions")
+        string equalPositionFenResource = "equal_positions",
+        bool useFixedSeed = true,
+        int configuredBatchSeed = 1)
     {
         CacheReferences();
         matchMode = ChessMatchMode.AIVsAI;
@@ -360,9 +382,12 @@ public class ChessMatchCoordinator : MonoBehaviour
         alternateColorsInBatch = alternateColors;
         rerunStalematesInBatch = rerunStalemates;
         aiVsAiRestartDelay = Mathf.Max(0f, restartDelay);
+        useFixedBatchSeed = useFixedSeed;
+        batchSeed = configuredBatchSeed;
         configuredWhiteProfile = whiteProfile;
         configuredBlackProfile = blackProfile;
         currentBatchStartingFen = null;
+        InitializeBatchRandom();
         PrepareStartingFenForBatchGame();
         AssignEngineProfilesForBatchGame(GetComponents<AIController>());
 
@@ -410,6 +435,14 @@ public class ChessMatchCoordinator : MonoBehaviour
         return NormalizeBatchGameCount(aiVsAiBatchGameCount);
     }
 
+    private void InitializeBatchRandom()
+    {
+        activeBatchSeed = useFixedBatchSeed
+            ? batchSeed
+            : System.Environment.TickCount;
+        batchFenRandom = new System.Random(activeBatchSeed);
+    }
+
     private void PrepareStartingFenForBatchGame()
     {
         if (gameManager == null)
@@ -451,7 +484,10 @@ public class ChessMatchCoordinator : MonoBehaviour
         int attempts = Mathf.Min(20, equalPositionFens.Count);
         for (int i = 0; i < attempts; i++)
         {
-            string candidate = equalPositionFens[Random.Range(0, equalPositionFens.Count)];
+            int index = batchFenRandom != null
+                ? batchFenRandom.Next(equalPositionFens.Count)
+                : Random.Range(0, equalPositionFens.Count);
+            string candidate = equalPositionFens[index];
             if (FEN.TryLoadFen(candidate, out _))
             {
                 fen = candidate;
@@ -520,6 +556,46 @@ public class ChessMatchCoordinator : MonoBehaviour
         {
             aiControllers[1].aiStartColorBlack = true;
             aiControllers[1].engineProfile = blackProfile;
+        }
+    }
+
+    private void WarnAboutExperimentConfounders(AIController[] aiControllers)
+    {
+        if (!runAIVsAIBatch || aiControllers.Length < 2)
+        {
+            return;
+        }
+
+        EngineSettings whiteSettings = aiControllers[0].engineProfile != null
+            ? aiControllers[0].engineProfile.ToSettings()
+            : aiControllers[0].fallbackSettings;
+        EngineSettings blackSettings = aiControllers[1].engineProfile != null
+            ? aiControllers[1].engineProfile.ToSettings()
+            : aiControllers[1].fallbackSettings;
+
+        if (configuredWhiteProfile != null && configuredWhiteProfile == configuredBlackProfile)
+        {
+            Debug.LogWarning("AI-vs-AI batch is configured as a mirror match. Make sure that is intentional.", this);
+        }
+
+        if (whiteSettings.searchDepth != blackSettings.searchDepth)
+        {
+            Debug.LogWarning("AI-vs-AI batch uses mismatched search depths between white and black.", this);
+        }
+
+        if (!Mathf.Approximately(whiteSettings.maxThinkTimeSeconds, blackSettings.maxThinkTimeSeconds))
+        {
+            Debug.LogWarning("AI-vs-AI batch uses mismatched think times between white and black.", this);
+        }
+
+        if (whiteSettings.useOpeningBook != blackSettings.useOpeningBook)
+        {
+            Debug.LogWarning("AI-vs-AI batch mixes opening-book settings between white and black.", this);
+        }
+
+        if (useEqualPositionFenStarts && !useFixedBatchSeed)
+        {
+            Debug.LogWarning("Equal-position FEN starts are enabled without a fixed batch seed, so runs will not be reproducible.", this);
         }
     }
 }

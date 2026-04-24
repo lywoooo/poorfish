@@ -8,14 +8,18 @@ public class MatchManagerWindow : EditorWindow
     private EngineProfile whiteProfile;
     private EngineProfile blackProfile;
     private int gameCount = 50;
-    private int maxFullMoves = 100;
+    private int maxFullMoves = 160;
     private bool recordCsv = true;
     private string csvFileName = "experiment_matches.csv";
     private bool alternateColors = true;
-    private bool useEqualPositionFens = true;
+    private bool useEqualPositionFens;
     private string equalPositionFenResource = "equal_positions";
     private bool rerunStalemates;
     private float restartDelay = 0.05f;
+    private bool useFixedBatchSeed = true;
+    private int batchSeed = 1;
+    private bool allowMirrorMatch;
+    private bool allowSettingMismatch;
     private Vector2 scrollPosition;
     private GUIStyle titleStyle;
     private GUIStyle accentStyle;
@@ -88,7 +92,9 @@ public class MatchManagerWindow : EditorWindow
             rerunStalemates,
             restartDelay,
             useEqualPositionFens,
-            equalPositionFenResource);
+            equalPositionFenResource,
+            useFixedBatchSeed,
+            batchSeed);
 
         EditorUtility.SetDirty(coordinator);
         foreach (AIController aiController in coordinator.GetComponents<AIController>())
@@ -188,6 +194,11 @@ public class MatchManagerWindow : EditorWindow
         gameCount = Mathf.Max(1, EditorGUILayout.IntField("Games", gameCount));
         maxFullMoves = Mathf.Max(1, EditorGUILayout.IntField("Max Moves", maxFullMoves));
         restartDelay = Mathf.Max(0f, EditorGUILayout.FloatField("Restart Delay", restartDelay));
+        useFixedBatchSeed = EditorGUILayout.Toggle("Fixed Batch Seed", useFixedBatchSeed);
+        using (new EditorGUI.DisabledScope(!useFixedBatchSeed))
+        {
+            batchSeed = EditorGUILayout.IntField("Batch Seed", batchSeed);
+        }
         useEqualPositionFens = EditorGUILayout.Toggle("Equal FEN Starts", useEqualPositionFens);
         using (new EditorGUI.DisabledScope(useEqualPositionFens))
         {
@@ -206,9 +217,17 @@ public class MatchManagerWindow : EditorWindow
         }
 
         rerunStalemates = EditorGUILayout.Toggle("Rerun Stalemates", rerunStalemates);
+        allowMirrorMatch = EditorGUILayout.Toggle("Allow Mirror Match", allowMirrorMatch);
+        allowSettingMismatch = EditorGUILayout.Toggle("Allow Setting Mismatch", allowSettingMismatch);
+
+        string validationMessage = BuildValidationMessage();
+        if (!string.IsNullOrEmpty(validationMessage))
+        {
+            EditorGUILayout.HelpBox(validationMessage, MessageType.Warning);
+        }
 
         GUILayout.Space(10f);
-        using (new EditorGUI.DisabledScope(coordinator == null))
+        using (new EditorGUI.DisabledScope(coordinator == null || !CanStartMatch()))
         {
             if (GUILayout.Button("Start Match", buttonStyle, GUILayout.Height(30f)))
             {
@@ -330,6 +349,66 @@ public class MatchManagerWindow : EditorWindow
     private int BlackWins => coordinator != null ? coordinator.BlackWins : 0;
 
     private int Draws => coordinator != null ? coordinator.Draws : 0;
+
+    private bool CanStartMatch()
+    {
+        return string.IsNullOrEmpty(BuildValidationMessage());
+    }
+
+    private string BuildValidationMessage()
+    {
+        if (whiteProfile == null || blackProfile == null)
+        {
+            return "Select both engine profiles before starting a batch.";
+        }
+
+        if (whiteProfile == blackProfile && !allowMirrorMatch)
+        {
+            return "Both sides are using the same profile. Enable Allow Mirror Match if that is intentional.";
+        }
+
+        if (!allowSettingMismatch && HasExperimentSettingMismatch(out string mismatchMessage))
+        {
+            return mismatchMessage + " Enable Allow Setting Mismatch only if that difference is the experiment.";
+        }
+
+        if (recordCsv && string.IsNullOrWhiteSpace(csvFileName))
+        {
+            return "Provide a CSV file name or turn off CSV recording.";
+        }
+
+        return string.Empty;
+    }
+
+    private bool HasExperimentSettingMismatch(out string mismatchMessage)
+    {
+        mismatchMessage = string.Empty;
+
+        if (whiteProfile == null || blackProfile == null)
+        {
+            return false;
+        }
+
+        if (whiteProfile.searchDepth != blackProfile.searchDepth)
+        {
+            mismatchMessage = "Search depth differs between the selected profiles.";
+            return true;
+        }
+
+        if (!Mathf.Approximately(whiteProfile.maxThinkTimeSeconds, blackProfile.maxThinkTimeSeconds))
+        {
+            mismatchMessage = "Think time differs between the selected profiles.";
+            return true;
+        }
+
+        if (whiteProfile.useOpeningBook != blackProfile.useOpeningBook)
+        {
+            mismatchMessage = "Opening-book usage differs between the selected profiles.";
+            return true;
+        }
+
+        return false;
+    }
 
     private void EnsureStyles()
     {
