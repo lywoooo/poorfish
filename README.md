@@ -77,7 +77,11 @@ Current controlled tests use balanced random FEN positions, color-swapped pairs,
 
 ![Controlled self-play results against V1 Baseline](docs/experiments/controlled-results-vs-baseline.svg)
 
+![Paired FEN outcomes against V1 Baseline](docs/experiments/paired-fen-outcomes.svg)
+
 ![Search efficiency and depth in controlled self-play](docs/experiments/search-efficiency-depth.svg)
+
+![Game termination breakdown](docs/experiments/termination-breakdown.svg)
 
 In the latest 250-game comparisons, the search-focused `V4_TranspositionTable` profile scored 160 wins, 81 draws, and 9 losses against `V1_Baseline`. Later evaluation-heavy versions also beat the baseline, but not as strongly in this test set.
 

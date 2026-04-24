@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="430" viewBox="0 0 900 430" role="img" aria-labelledby="title desc">
+  <title id="title">Paired FEN outcomes against V1 Baseline</title>
+  <desc id="desc">Stacked bar chart showing how each engine performed across 125 paired starting positions against V1 Baseline.</desc>
+  <rect width="900" height="430" fill="#f8fafc"/>
+  <text x="40" y="46" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#111827">Paired-position outcomes</text>
+  <text x="40" y="74" font-family="Arial, sans-serif" font-size="14" fill="#475569">Each bar is 125 starting positions. Every position was played twice, once with each color.</text>
+
+  <rect x="40" y="102" width="12" height="12" fill="#1d4ed8"/>
+  <text x="60" y="112" font-family="Arial, sans-serif" font-size="12" fill="#334155">2-0 sweep</text>
+  <rect x="150" y="102" width="12" height="12" fill="#60a5fa"/>
+  <text x="170" y="112" font-family="Arial, sans-serif" font-size="12" fill="#334155">1.5-0.5</text>
+  <rect x="250" y="102" width="12" height="12" fill="#94a3b8"/>
+  <text x="270" y="112" font-family="Arial, sans-serif" font-size="12" fill="#334155">split / two draws</text>
+  <rect x="395" y="102" width="12" height="12" fill="#fca5a5"/>
+  <text x="415" y="112" font-family="Arial, sans-serif" font-size="12" fill="#334155">0.5-1.5</text>
+  <rect x="500" y="102" width="12" height="12" fill="#ef4444"/>
+  <text x="520" y="112" font-family="Arial, sans-serif" font-size="12" fill="#334155">0-2 loss</text>
+
+  <g font-family="Arial, sans-serif" font-size="14" fill="#111827">
+    <text x="40" y="164" font-weight="700">V4 TranspositionTable</text>
+    <rect x="210" y="144" width="240" height="30" rx="4" fill="#1d4ed8"/>
+    <rect x="450" y="144" width="259.2" height="30" fill="#60a5fa"/>
+    <rect x="709.2" y="144" width="86.4" height="30" fill="#94a3b8"/>
+    <rect x="795.6" y="144" width="14.4" height="30" rx="4" fill="#fca5a5"/>
+    <text x="462" y="164" fill="#0f172a">50 sweep / 54 win+draw</text>
+
+    <text x="40" y="234" font-weight="700">V8 Endgame</text>
+    <rect x="210" y="214" width="172.8" height="30" rx="4" fill="#1d4ed8"/>
+    <rect x="382.8" y="214" width="259.2" height="30" fill="#60a5fa"/>
+    <rect x="642" y="214" width="134.4" height="30" fill="#94a3b8"/>
+    <rect x="776.4" y="214" width="24" height="30" fill="#fca5a5"/>
+    <rect x="800.4" y="214" width="9.6" height="30" rx="4" fill="#ef4444"/>
+    <text x="395" y="234" fill="#0f172a">36 sweep / 54 win+draw</text>
+
+    <text x="40" y="304" font-weight="700">V7 Mobility</text>
+    <rect x="210" y="284" width="182.4" height="30" rx="4" fill="#1d4ed8"/>
+    <rect x="392.4" y="284" width="220.8" height="30" fill="#60a5fa"/>
+    <rect x="613.2" y="284" width="144" height="30" fill="#94a3b8"/>
+    <rect x="757.2" y="284" width="48" height="30" fill="#fca5a5"/>
+    <rect x="805.2" y="284" width="4.8" height="30" rx="4" fill="#ef4444"/>
+    <text x="405" y="304" fill="#0f172a">38 sweep / 46 win+draw</text>
+  </g>
+
+  <line x1="210" y1="350" x2="810" y2="350" stroke="#cbd5e1"/>
+  <g font-family="Arial, sans-serif" font-size="12" fill="#64748b">
+    <text x="205" y="374">0</text>
+    <text x="324" y="374">25</text>
+    <text x="444" y="374">50</text>
+    <text x="564" y="374">75</text>
+    <text x="681" y="374">100</text>
+    <text x="793" y="374">125</text>
+  </g>
+  <text x="40" y="405" font-family="Arial, sans-serif" font-size="12" fill="#64748b">This view reduces color noise by scoring each starting position as a two-game mini-match.</text>
+</svg>
