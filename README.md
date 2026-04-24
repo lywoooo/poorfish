@@ -73,15 +73,17 @@ Logged data includes:
 - pruning cutoffs  
 - transposition hits  
 
-Current sample:
+Current controlled tests use balanced random FEN positions, color-swapped pairs, and per-ply search telemetry.
 
-- 59 games (baseline vs baseline)  
-- 2,884 plies logged  
-- average game length: 48.9 plies  
+![Controlled self-play results against V1 Baseline](docs/experiments/controlled-results-vs-baseline.svg)
 
-Results show a high rate of repetition-based draws in simplified positions.
+![Search efficiency and depth in controlled self-play](docs/experiments/search-efficiency-depth.svg)
 
-This suggests the engine prioritizes safe repetition over meaningful progress, giving me a concrete next direction: improving evaluation pressure instead of only increasing search depth.
+In the latest 250-game comparisons, the search-focused `V4_TranspositionTable` profile scored 160 wins, 81 draws, and 9 losses against `V1_Baseline`. Later evaluation-heavy versions also beat the baseline, but not as strongly in this test set.
+
+The opening-book profile is not included in the chart because these experiments start from random positions, where the book did not trigger. That makes opening-book strength a separate experiment from the balanced-FEN tests.
+
+The high draw count still matters: many games end by repetition, which suggests the engine often prefers safe loops over converting advantages. My next focus is improving evaluation pressure and progress incentives rather than only adding more features.
 
 ---
 
