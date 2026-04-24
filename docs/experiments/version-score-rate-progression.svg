@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="430" viewBox="0 0 900 430" role="img" aria-labelledby="title desc">
+  <title id="title">Version score-rate progression against V1 Baseline</title>
+  <desc id="desc">Line chart showing score rate for measured engine versions against V1 Baseline, counting wins as one point and draws as half a point.</desc>
+  <rect width="900" height="430" fill="#f8fafc"/>
+  <text x="40" y="46" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#111827">Measured score rate vs V1 Baseline</text>
+  <text x="40" y="74" font-family="Arial, sans-serif" font-size="14" fill="#475569">Score = wins + half of draws. This shows overall match performance when draws are counted.</text>
+
+  <g stroke="#cbd5e1" stroke-width="1">
+    <line x1="120" y1="330" x2="820" y2="330"/>
+    <line x1="120" y1="280" x2="820" y2="280"/>
+    <line x1="120" y1="230" x2="820" y2="230"/>
+    <line x1="120" y1="180" x2="820" y2="180"/>
+    <line x1="120" y1="130" x2="820" y2="130"/>
+  </g>
+  <g font-family="Arial, sans-serif" font-size="12" fill="#64748b">
+    <text x="72" y="334">65%</text>
+    <text x="72" y="284">70%</text>
+    <text x="72" y="234">75%</text>
+    <text x="72" y="184">80%</text>
+    <text x="72" y="134">85%</text>
+  </g>
+
+  <polyline points="180,178 390,260 600,246 810,246" fill="none" stroke="#0f766e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="705" y1="246" x2="830" y2="246" stroke="#94a3b8" stroke-width="3" stroke-dasharray="6 6"/>
+
+  <g font-family="Arial, sans-serif" text-anchor="middle">
+    <circle cx="180" cy="178" r="7" fill="#0f766e"/>
+    <text x="180" y="158" font-size="14" font-weight="700" fill="#111827">80.2%</text>
+    <text x="180" y="360" font-size="13" fill="#111827">V4</text>
+    <text x="180" y="378" font-size="12" fill="#64748b">160-81-9</text>
+
+    <circle cx="390" cy="260" r="7" fill="#0f766e"/>
+    <text x="390" y="240" font-size="14" font-weight="700" fill="#111827">72.0%</text>
+    <text x="390" y="360" font-size="13" fill="#111827">V7</text>
+    <text x="390" y="378" font-size="12" fill="#64748b">139-82-29</text>
+
+    <circle cx="600" cy="246" r="7" fill="#0f766e"/>
+    <text x="600" y="226" font-size="14" font-weight="700" fill="#111827">73.4%</text>
+    <text x="600" y="360" font-size="13" fill="#111827">V8</text>
+    <text x="600" y="378" font-size="12" fill="#64748b">144-79-27</text>
+
+    <circle cx="810" cy="246" r="7" fill="#94a3b8"/>
+    <text x="810" y="226" font-size="14" font-weight="700" fill="#111827">73.4%</text>
+    <text x="810" y="360" font-size="13" fill="#111827">V9</text>
+    <text x="810" y="378" font-size="12" fill="#64748b">146-75-29</text>
+  </g>
+
+  <text x="40" y="410" font-family="Arial, sans-serif" font-size="12" fill="#64748b">These are measured checkpoints, not a complete ladder for every intermediate version.</text>
+</svg>

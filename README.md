@@ -77,6 +77,10 @@ Current controlled tests use balanced random FEN positions, color-swapped pairs,
 
 ![Controlled self-play results against V1 Baseline](docs/experiments/controlled-results-vs-baseline.svg)
 
+![Version win-rate progression against V1 Baseline](docs/experiments/version-win-rate-progression.svg)
+
+![Version score-rate progression against V1 Baseline](docs/experiments/version-score-rate-progression.svg)
+
 ![Paired FEN outcomes against V1 Baseline](docs/experiments/paired-fen-outcomes.svg)
 
 ![Search efficiency and depth in controlled self-play](docs/experiments/search-efficiency-depth.svg)

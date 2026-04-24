@@ -322,7 +322,7 @@ MonoBehaviour:
   moveDelay: 0.1
   aiPickupDuration: 0.0012
   aiPickupLiftRatio: 0.18
-  engineProfile: {fileID: 11400000, guid: d8f66e21db15c4334b5b71c6ce6f6704, type: 2}
+  engineProfile: {fileID: 11400000, guid: 6b8bbe17555e5401eb6dc543da7cfccf, type: 2}
   fallbackSettings:
     profileName: Baseline
     searchDepth: 6
@@ -360,7 +360,7 @@ MonoBehaviour:
   moveDelay: 0.1
   aiPickupDuration: 0.0012
   aiPickupLiftRatio: 0.18
-  engineProfile: {fileID: 11400000, guid: d8f66e21db15c4334b5b71c6ce6f6704, type: 2}
+  engineProfile: {fileID: 11400000, guid: 30453b9db976446169369a2826f36129, type: 2}
   fallbackSettings:
     profileName: Baseline
     searchDepth: 6
@@ -399,21 +399,23 @@ MonoBehaviour:
   recordAIVsAIToCsv: 1
   aiVsAiCsvFileName: experiment_matches.csv
   runAIVsAIBatch: 1
-  aiVsAiBatchGameCount: 100
+  aiVsAiBatchGameCount: 250
   maxFullMovesPerGame: 100
   alternateColorsInBatch: 1
   useEqualPositionFenStarts: 1
   equalPositionFenResourceName: equal_positions
   rerunStalematesInBatch: 0
   aiVsAiRestartDelay: 0.05
+  useFixedBatchSeed: 1
+  batchSeed: 1
   gameManager: {fileID: 516697451}
   board: {fileID: 516697442}
   boardUI: {fileID: 516697440}
   moveSelector: {fileID: 516697444}
   autoConfigureInEditor: 1
-  configuredWhiteProfile: {fileID: 11400000, guid: d8f66e21db15c4334b5b71c6ce6f6704,
+  configuredWhiteProfile: {fileID: 11400000, guid: 6b8bbe17555e5401eb6dc543da7cfccf,
     type: 2}
-  configuredBlackProfile: {fileID: 11400000, guid: d8f66e21db15c4334b5b71c6ce6f6704,
+  configuredBlackProfile: {fileID: 11400000, guid: 30453b9db976446169369a2826f36129,
     type: 2}
 --- !u!1 &516697450
 GameObject:

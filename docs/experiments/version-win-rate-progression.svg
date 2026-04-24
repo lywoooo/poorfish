@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="430" viewBox="0 0 900 430" role="img" aria-labelledby="title desc">
+  <title id="title">Version win-rate progression against V1 Baseline</title>
+  <desc id="desc">Line chart showing raw win rate for measured engine versions against V1 Baseline in controlled 250-game paired-position experiments.</desc>
+  <rect width="900" height="430" fill="#f8fafc"/>
+  <text x="40" y="46" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#111827">Measured win rate vs V1 Baseline</text>
+  <text x="40" y="74" font-family="Arial, sans-serif" font-size="14" fill="#475569">Raw wins only, from 250-game paired-position batches. Draws are not counted as wins.</text>
+
+  <g stroke="#cbd5e1" stroke-width="1">
+    <line x1="120" y1="330" x2="820" y2="330"/>
+    <line x1="120" y1="280" x2="820" y2="280"/>
+    <line x1="120" y1="230" x2="820" y2="230"/>
+    <line x1="120" y1="180" x2="820" y2="180"/>
+    <line x1="120" y1="130" x2="820" y2="130"/>
+  </g>
+  <g font-family="Arial, sans-serif" font-size="12" fill="#64748b">
+    <text x="72" y="334">40%</text>
+    <text x="72" y="284">45%</text>
+    <text x="72" y="234">50%</text>
+    <text x="72" y="184">55%</text>
+    <text x="72" y="134">60%</text>
+    <text x="72" y="104">65%</text>
+  </g>
+
+  <polyline points="180,90 390,174 600,154 810,146" fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="705" y1="146" x2="830" y2="146" stroke="#94a3b8" stroke-width="3" stroke-dasharray="6 6"/>
+
+  <g font-family="Arial, sans-serif" text-anchor="middle">
+    <circle cx="180" cy="90" r="7" fill="#2563eb"/>
+    <text x="180" y="70" font-size="14" font-weight="700" fill="#111827">64.0%</text>
+    <text x="180" y="360" font-size="13" fill="#111827">V4</text>
+    <text x="180" y="378" font-size="12" fill="#64748b">TT/search</text>
+
+    <circle cx="390" cy="174" r="7" fill="#2563eb"/>
+    <text x="390" y="154" font-size="14" font-weight="700" fill="#111827">55.6%</text>
+    <text x="390" y="360" font-size="13" fill="#111827">V7</text>
+    <text x="390" y="378" font-size="12" fill="#64748b">mobility</text>
+
+    <circle cx="600" cy="154" r="7" fill="#2563eb"/>
+    <text x="600" y="134" font-size="14" font-weight="700" fill="#111827">57.6%</text>
+    <text x="600" y="360" font-size="13" fill="#111827">V8</text>
+    <text x="600" y="378" font-size="12" fill="#64748b">endgame</text>
+
+    <circle cx="810" cy="146" r="7" fill="#94a3b8"/>
+    <text x="810" y="126" font-size="14" font-weight="700" fill="#111827">58.4%</text>
+    <text x="810" y="360" font-size="13" fill="#111827">V9</text>
+    <text x="810" y="378" font-size="12" fill="#64748b">book inactive</text>
+  </g>
+
+  <text x="40" y="410" font-family="Arial, sans-serif" font-size="12" fill="#64748b">V9 is shown for completeness, but its opening book was not used from random FEN starts.</text>
+</svg>
