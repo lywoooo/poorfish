@@ -300,12 +300,12 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 516697437}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 69ccfe8c654294ec3a7a7cc1369e8c91, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  allowHumanInput: 0
+  allowHumanInput: 1
 --- !u!114 &516697445
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -313,7 +313,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 516697437}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a66427f08b37f12d0a62f2a96ac21c3f, type: 3}
   m_Name: 
@@ -360,18 +360,18 @@ MonoBehaviour:
   moveDelay: 0.1
   aiPickupDuration: 0.0012
   aiPickupLiftRatio: 0.18
-  engineProfile: {fileID: 11400000, guid: 30453b9db976446169369a2826f36129, type: 2}
+  engineProfile: {fileID: 0}
   fallbackSettings:
-    profileName: Baseline
-    searchDepth: 6
-    maxThinkTimeSeconds: 100
+    profileName: 
+    searchDepth: 7
+    maxThinkTimeSeconds: 500
     logSearchStats: 1
     useAlphaBetaPruning: 1
     useMoveOrdering: 1
     useTranspositionTable: 1
     useAdaptiveEndgameDepth: 1
     useImmediateCheckmateShortcut: 1
-    useOpeningBook: 1
+    useOpeningBook: 0
     evaluationWeights:
       materialWeight: 100
       pieceSquareWeight: 100
@@ -394,7 +394,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7e8d9c0ab1c24f36a9b08bcae7c1d4f2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  matchMode: 2
+  matchMode: 1
   humanSide: 0
   recordAIVsAIToCsv: 1
   aiVsAiCsvFileName: experiment_matches.csv
@@ -402,7 +402,7 @@ MonoBehaviour:
   aiVsAiBatchGameCount: 250
   maxFullMovesPerGame: 100
   alternateColorsInBatch: 1
-  useEqualPositionFenStarts: 1
+  useEqualPositionFenStarts: 0
   equalPositionFenResourceName: equal_positions
   rerunStalematesInBatch: 0
   aiVsAiRestartDelay: 0.05
@@ -415,8 +415,7 @@ MonoBehaviour:
   autoConfigureInEditor: 1
   configuredWhiteProfile: {fileID: 11400000, guid: 6b8bbe17555e5401eb6dc543da7cfccf,
     type: 2}
-  configuredBlackProfile: {fileID: 11400000, guid: 30453b9db976446169369a2826f36129,
-    type: 2}
+  configuredBlackProfile: {fileID: 0}
 --- !u!1 &516697450
 GameObject:
   m_ObjectHideFlags: 0

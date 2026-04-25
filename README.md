@@ -1,79 +1,64 @@
 # poorfish
 
-`poorfish` is a Unity/C# chess engine and experimentation system focused on understanding how search algorithms and evaluation functions affect decision-making.
+`poorfish` is my Unity/C# chess engine project. I began with a playable chess foundation, then turned it into a system for asking a harder question: how do search algorithms, evaluation heuristics, and experiment design actually change an engine's decisions?
 
-It started from a Unity chess foundation, but I’ve been extending it into a system I can analyze rather than just play.
+The project is still in progress, but it has become one of the clearest examples of how I learn: build something real, measure it honestly, find where the data is misleading, and improve the system around that.
 
 ![Chess Screenshot](https://github.com/user-attachments/assets/59b7f82e-e906-4b8c-9ca0-fdbec62a9e7d)
 
-## Play it
+## Play
 
 [Play poorfish on itch.io](https://lywoo.itch.io/poorfish)
 
 ---
 
-## Overview
+## What I Built
 
-The project supports a full chess game loop with legal move generation, special rules (castling, en passant, promotion), and complete game-state handling.
+`poorfish` supports a full chess game loop in Unity, including legal move generation, castling, en passant, promotion, check detection, checkmate, stalemate, and game-state tracking.
 
-More importantly, it is structured to allow fast simulation and experimentation on chess positions rather than relying on Unity scene objects.
+The part I am most proud of is that the engine is not tied to the Unity board. I separated the chess logic from the rendering layer so positions can be simulated, searched, logged, and compared without relying on scene objects.
 
----
+Core pieces include:
 
-## Architecture
+- `BoardState`, a 64-square board model used by the engine
+- legal move generation and rule validation over that model
+- a search pipeline that can run independently of Unity visuals
+- engine profiles for comparing different search and evaluation ideas
+- AI-vs-AI match running with CSV and PGN output
+- per-ply telemetry for analyzing how the engine searched each position
 
-The system separates game logic from rendering:
+That separation made the project feel less like a game script and more like a small research platform.
 
-- `BoardState` represents the position as a 64-square array
-- Move generation and rule validation operate entirely on this model
-- Search runs independently of Unity objects
-- Unity handles visualization and interaction
+## Chess Engine
 
-This separation allows the engine to simulate positions quickly and run AI search and experiments without scene overhead.
+The engine uses a traditional search-based approach:
 
----
+- minimax with alpha-beta pruning
+- iterative deepening with time limits
+- transposition table caching
+- move ordering
+- adaptive endgame depth
+- configurable evaluator weights
 
-## Chess AI
+The evaluator includes more than material count. It can consider piece-square tables, mobility, king pressure, endgame behavior, and profile-specific weights. This lets me compare versions of the engine by changing one idea at a time instead of treating the AI as a black box.
 
-The engine uses a search-based approach:
+I also log the engine's search behavior:
 
-- Minimax with alpha-beta pruning
-- Iterative deepening and time-limited search
-- Transposition table caching
-- Move ordering and adaptive endgame depth
+- selected moves and evaluations
+- nodes searched
+- alpha-beta cutoffs
+- transposition table hits
+- depth reached
+- time spent per move
+- FEN context before each move
 
-The evaluation function goes beyond material:
+Those logs helped me debug the engine, but more importantly, they changed how I thought about improvement. A better-looking feature was not enough; I needed evidence that it changed play in a meaningful way.
 
-- Piece-square tables
-- Mobility and positional heuristics
-- King pressure and endgame features
-- Configurable weights through engine profiles
+## Experiments
 
-To better understand behavior, I added instrumentation:
+I built a self-play experiment workflow to compare engine versions across many games. The current controlled tests use balanced random FEN positions, color-swapped pairs, fixed batch settings, and per-ply search telemetry.
 
-- nodes explored  
-- alpha-beta cutoffs  
-- transposition hits  
-- search depth and time  
-
-This lets me measure how the engine works instead of treating it as a black box.
-
----
-
-## Experimentation
-
-I built an AI-vs-AI batch system with CSV logging so I could compare engine configurations across full games.
-
-Logged data includes:
-
-- FEN positions  
-- evaluation scores  
-- search depth  
-- nodes explored  
-- pruning cutoffs  
-- transposition hits  
-
-Current controlled tests use balanced random FEN positions, color-swapped pairs, and per-ply search telemetry.
+This matters because early AI-vs-AI tests were easy to misread. A version could look stronger because it played White more often, started from easier positions, or used different search settings. I added guardrails and paired starts so the results became more trustworthy.
 
 ![Controlled self-play results against V1 Baseline](docs/experiments/controlled-results-vs-baseline.svg)
 
@@ -87,30 +72,32 @@ Current controlled tests use balanced random FEN positions, color-swapped pairs,
 
 ![Game termination breakdown](docs/experiments/termination-breakdown.svg)
 
-In the latest 250-game comparisons, the search-focused `V4_TranspositionTable` profile scored 160 wins, 81 draws, and 9 losses against `V1_Baseline`. Later evaluation-heavy versions also beat the baseline, but not as strongly in this test set.
+In one 250-game controlled comparison, the search-focused `V4_TranspositionTable` profile scored 160 wins, 81 draws, and 9 losses against `V1_Baseline`. Later evaluation-heavy versions also beat the baseline, but not as strongly in that test set.
 
-The opening-book profile is not included in the chart because these experiments start from random positions, where the book did not trigger. That makes opening-book strength a separate experiment from the balanced-FEN tests.
+The `V9_OpeningBook` profile is shown carefully because these random-FEN experiments do not really test the opening book. Since the games start from generated positions instead of standard openings, the book did not trigger. I kept that distinction in the writeup because making the data sound stronger than it is would make the project less useful.
 
-The high draw count still matters: many games end by repetition, which suggests the engine often prefers safe loops over converting advantages. My next focus is improving evaluation pressure and progress incentives rather than only adding more features.
+## What I Learned
 
----
+The biggest lesson so far is that deeper search is not automatically better chess.
 
-## Key Insight
+When the evaluation function was weak, searching farther sometimes made the engine repeat safe moves instead of making progress. That shifted my focus from simply adding more features to studying the relationship between search, evaluation, and incentives.
 
-One of the main insights from this project is that deeper search does not necessarily lead to better play.
+I also learned that experiments need engineering too. A match runner, logging format, profile system, and fair starting positions are not side details; they determine whether the results mean anything.
 
-In many cases, increasing depth without improving evaluation caused the engine to repeat moves or fail to make progress.
+This project has made me more careful about evidence. I started by asking, "Can I make the bot stronger?" Now I ask, "What changed, how do I know, and what would prove me wrong?"
 
-This shifted my focus from adding features to understanding how search and evaluation interact, and treating the engine as something to measure and test rather than something to complete.
+## Current Focus
 
----
+`poorfish` is still being developed. My next goals are:
 
-## Status
+- reduce repetition and safe-loop behavior
+- improve evaluation pressure in winning positions
+- run cleaner ablation tests for individual techniques
+- expand the analysis tools around match logs
+- continue refining the WebGL build and player experience
 
-`poorfish` is still in progress. Current focus areas:
+## Why This Project Matters To Me
 
-- reducing repetition in endgames  
-- strengthening evaluation heuristics  
-- comparing engine profiles through self-play  
-- improving analysis tooling for logged data  
-- refining the WebGL build  
+Chess engines are a good kind of difficult: the rules are exact, but the decisions are messy. That combination pushed me to write cleaner systems, design fairer tests, and become more honest about what my code was actually doing.
+
+`poorfish` is not just a chess bot I built. It is a project where I learned to connect programming, experimentation, and reflection into one feedback loop.
