@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="500" viewBox="0 0 960 500" role="img" aria-labelledby="title desc">
+  <title id="title">Poorfish experiment method and search telemetry</title>
+  <desc id="desc">Diagram showing the controlled experiment pipeline and search telemetry comparisons for optimized engine versions against baseline.</desc>
+  <rect width="960" height="500" fill="#fbfaf7"/>
+
+  <text x="44" y="52" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#172033">How the tests were made fairer</text>
+  <text x="44" y="80" font-family="Arial, sans-serif" font-size="15" fill="#526070">The experiment system became part of the project: same positions, swapped colors, fixed settings, and logged search behavior.</text>
+
+  <rect x="44" y="114" width="408" height="292" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+  <text x="68" y="150" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#172033">Experiment pipeline</text>
+
+  <g font-family="Arial, sans-serif">
+    <rect x="76" y="184" width="312" height="42" rx="8" fill="#e8f1ff" stroke="#bfdbfe"/>
+    <text x="100" y="211" font-size="14" font-weight="700" fill="#1d4ed8">1. Generate balanced FEN starts</text>
+    <line x1="232" y1="226" x2="232" y2="250" stroke="#94a3b8" stroke-width="2"/>
+
+    <rect x="76" y="250" width="312" height="42" rx="8" fill="#edf7f4" stroke="#b7ddd4"/>
+    <text x="100" y="277" font-size="14" font-weight="700" fill="#0f766e">2. Play each position twice</text>
+    <line x1="232" y1="292" x2="232" y2="316" stroke="#94a3b8" stroke-width="2"/>
+
+    <rect x="76" y="316" width="312" height="42" rx="8" fill="#fff7ed" stroke="#fed7aa"/>
+    <text x="100" y="343" font-size="14" font-weight="700" fill="#9a3412">3. Keep search settings fixed</text>
+    <line x1="232" y1="358" x2="232" y2="382" stroke="#94a3b8" stroke-width="2"/>
+
+    <rect x="76" y="382" width="312" height="42" rx="8" fill="#f8fafc" stroke="#d1d5db"/>
+    <text x="100" y="409" font-size="14" font-weight="700" fill="#334155">4. Export games, summaries, and ply logs</text>
+  </g>
+
+  <rect x="492" y="114" width="424" height="292" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+  <text x="516" y="150" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#172033">Search telemetry from controlled runs</text>
+  <text x="516" y="173" font-family="Arial, sans-serif" font-size="13" fill="#64748b">Average nodes per move. Optimized versions usually searched deeper with fewer nodes.</text>
+
+  <rect x="516" y="198" width="12" height="12" fill="#94a3b8"/>
+  <text x="536" y="209" font-family="Arial, sans-serif" font-size="12" fill="#334155">V1 from same run</text>
+  <rect x="660" y="198" width="12" height="12" fill="#2563eb"/>
+  <text x="680" y="209" font-family="Arial, sans-serif" font-size="12" fill="#334155">Compared version</text>
+
+  <g font-family="Arial, sans-serif" font-size="13" fill="#172033">
+    <text x="516" y="253" font-weight="700">V4 TranspositionTable</text>
+    <rect x="672" y="237" width="189" height="12" rx="3" fill="#94a3b8"/>
+    <rect x="672" y="257" width="135" height="12" rx="3" fill="#2563eb"/>
+    <text x="808" y="267" fill="#526070">45k nodes, depth 4.47</text>
+
+    <text x="516" y="315" font-weight="700">V8 Endgame</text>
+    <rect x="672" y="299" width="198" height="12" rx="3" fill="#94a3b8"/>
+    <rect x="672" y="319" width="102" height="12" rx="3" fill="#2563eb"/>
+    <text x="780" y="329" fill="#526070">34k nodes, depth 4.16</text>
+
+    <text x="516" y="377" font-weight="700">V7 Mobility</text>
+    <rect x="672" y="361" width="210" height="12" rx="3" fill="#94a3b8"/>
+    <rect x="672" y="381" width="111" height="12" rx="3" fill="#2563eb"/>
+    <text x="789" y="391" fill="#526070">37k nodes, depth 4.27</text>
+  </g>
+
+  <rect x="44" y="432" width="872" height="38" rx="8" fill="#ffffff" stroke="#e5e7eb"/>
+  <text x="68" y="456" font-family="Arial, sans-serif" font-size="13" fill="#526070">The logs include selected move, eval, depth, nodes, cutoffs, transposition hits, time, and FEN before each move.</text>
+</svg>

@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="620" viewBox="0 0 960 620" role="img" aria-labelledby="title desc">
+  <title id="title">Poorfish controlled self-play experiment overview</title>
+  <desc id="desc">Dashboard summarizing paired-position self-play results against V1 Baseline, a V4 versus V7 head-to-head run, and experiment caveats.</desc>
+  <rect width="960" height="620" fill="#fbfaf7"/>
+
+  <text x="44" y="52" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#172033">Controlled self-play results</text>
+  <text x="44" y="80" font-family="Arial, sans-serif" font-size="15" fill="#526070">250-game paired-position batches using balanced FEN starts, color swaps, fixed settings, and CSV telemetry.</text>
+
+  <rect x="44" y="112" width="556" height="356" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+  <text x="68" y="148" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#172033">Profile results vs V1 Baseline</text>
+  <text x="68" y="171" font-family="Arial, sans-serif" font-size="13" fill="#64748b">Wins, draws, and losses over 250 games. Score counts a draw as half a point.</text>
+
+  <rect x="68" y="198" width="12" height="12" fill="#2563eb"/>
+  <text x="88" y="209" font-family="Arial, sans-serif" font-size="12" fill="#334155">Wins</text>
+  <rect x="145" y="198" width="12" height="12" fill="#94a3b8"/>
+  <text x="165" y="209" font-family="Arial, sans-serif" font-size="12" fill="#334155">Draws</text>
+  <rect x="225" y="198" width="12" height="12" fill="#ef4444"/>
+  <text x="245" y="209" font-family="Arial, sans-serif" font-size="12" fill="#334155">Losses</text>
+
+  <g font-family="Arial, sans-serif" font-size="13" fill="#172033">
+    <text x="68" y="252" font-weight="700">V4 TranspositionTable</text>
+    <rect x="225" y="232" width="269" height="24" rx="4" fill="#2563eb"/>
+    <rect x="494" y="232" width="136" height="24" fill="#94a3b8"/>
+    <rect x="630" y="232" width="15" height="24" rx="4" fill="#ef4444"/>
+    <text x="662" y="250" font-weight="700">80.2%</text>
+    <text x="736" y="250" fill="#526070">160-81-9</text>
+
+    <text x="68" y="308" font-weight="700">V9 OpeningBook*</text>
+    <rect x="225" y="288" width="245" height="24" rx="4" fill="#2563eb"/>
+    <rect x="470" y="288" width="126" height="24" fill="#94a3b8"/>
+    <rect x="596" y="288" width="49" height="24" rx="4" fill="#ef4444"/>
+    <text x="662" y="306" font-weight="700">73.4%</text>
+    <text x="736" y="306" fill="#526070">146-75-29</text>
+
+    <text x="68" y="364" font-weight="700">V8 Endgame</text>
+    <rect x="225" y="344" width="242" height="24" rx="4" fill="#2563eb"/>
+    <rect x="467" y="344" width="133" height="24" fill="#94a3b8"/>
+    <rect x="600" y="344" width="45" height="24" rx="4" fill="#ef4444"/>
+    <text x="662" y="362" font-weight="700">73.4%</text>
+    <text x="736" y="362" fill="#526070">144-79-27</text>
+
+    <text x="68" y="420" font-weight="700">V7 Mobility</text>
+    <rect x="225" y="400" width="234" height="24" rx="4" fill="#2563eb"/>
+    <rect x="459" y="400" width="138" height="24" fill="#94a3b8"/>
+    <rect x="597" y="400" width="49" height="24" rx="4" fill="#ef4444"/>
+    <text x="662" y="418" font-weight="700">72.0%</text>
+    <text x="736" y="418" fill="#526070">139-82-29</text>
+  </g>
+
+  <text x="68" y="448" font-family="Arial, sans-serif" font-size="12" fill="#64748b">*Opening book is listed as inactive in this random-FEN test format.</text>
+
+  <rect x="626" y="112" width="290" height="106" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+  <text x="650" y="145" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#172033">Strongest baseline run</text>
+  <text x="650" y="173" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="#2563eb">160 W</text>
+  <text x="752" y="173" font-family="Arial, sans-serif" font-size="18" fill="#526070">/ 81 D / 9 L</text>
+  <text x="650" y="198" font-family="Arial, sans-serif" font-size="13" fill="#64748b">V4's transposition-table search had the clearest gain against V1.</text>
+
+  <rect x="626" y="242" width="290" height="120" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+  <text x="650" y="275" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#172033">Stronger-version test</text>
+  <text x="650" y="303" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#0f766e">V4 beat V7</text>
+  <text x="650" y="330" font-family="Arial, sans-serif" font-size="14" fill="#526070">97 wins, 96 draws, 57 losses</text>
+  <text x="650" y="350" font-family="Arial, sans-serif" font-size="12" fill="#64748b">This raised the question: did extra evaluation terms help enough?</text>
+
+  <rect x="626" y="386" width="290" height="86" rx="10" fill="#ffffff" stroke="#e5e7eb"/>
+  <text x="650" y="419" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#172033">Why controls mattered</text>
+  <text x="650" y="445" font-family="Arial, sans-serif" font-size="14" fill="#526070">A V1 mirror test ended 12 / 17 / 21.</text>
+  <text x="650" y="464" font-family="Arial, sans-serif" font-size="12" fill="#64748b">Identical engines still produced side-skewed results.</text>
+
+  <rect x="44" y="500" width="872" height="78" rx="10" fill="#eef6f4" stroke="#cde5df"/>
+  <text x="68" y="532" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#0f3f3a">Main takeaway</text>
+  <text x="68" y="558" font-family="Arial, sans-serif" font-size="14" fill="#1f4f4a">The best-looking engine change was not just the most complicated one. Controlled tests made it possible to separate real improvement from noise.</text>
+</svg>
