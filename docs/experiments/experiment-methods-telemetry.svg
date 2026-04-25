@@ -36,20 +36,20 @@
   <text x="688" y="217" font-family="Arial, sans-serif" font-size="12" fill="#334155">Compared version</text>
 
   <g font-family="Arial, sans-serif" font-size="13" fill="#172033">
-    <text x="516" y="265" font-weight="700">V4 TranspositionTable</text>
-    <rect x="516" y="284" width="270" height="12" rx="3" fill="#94a3b8"/>
-    <rect x="516" y="306" width="193" height="12" rx="3" fill="#2563eb"/>
-    <text x="724" y="317" fill="#526070">45k nodes, depth 4.47</text>
+    <text x="516" y="260" font-weight="700">V4 TranspositionTable</text>
+    <rect x="516" y="276" width="270" height="11" rx="3" fill="#94a3b8"/>
+    <rect x="516" y="295" width="193" height="11" rx="3" fill="#2563eb"/>
+    <text x="724" y="305" fill="#526070">45k nodes, depth 4.47</text>
 
-    <text x="516" y="356" font-weight="700">V8 Endgame</text>
-    <rect x="516" y="375" width="281" height="12" rx="3" fill="#94a3b8"/>
-    <rect x="516" y="397" width="148" height="12" rx="3" fill="#2563eb"/>
-    <text x="680" y="408" fill="#526070">34k nodes, depth 4.16</text>
+    <text x="516" y="328" font-weight="700">V8 Endgame</text>
+    <rect x="516" y="344" width="281" height="11" rx="3" fill="#94a3b8"/>
+    <rect x="516" y="363" width="148" height="11" rx="3" fill="#2563eb"/>
+    <text x="680" y="373" fill="#526070">34k nodes, depth 4.16</text>
 
-    <text x="516" y="447" font-weight="700">V7 Mobility</text>
-    <rect x="516" y="466" width="298" height="12" rx="3" fill="#94a3b8"/>
-    <rect x="516" y="488" width="160" height="12" rx="3" fill="#2563eb"/>
-    <text x="692" y="499" fill="#526070">37k nodes, depth 4.27</text>
+    <text x="516" y="396" font-weight="700">V7 Mobility</text>
+    <rect x="516" y="412" width="298" height="11" rx="3" fill="#94a3b8"/>
+    <rect x="516" y="431" width="160" height="11" rx="3" fill="#2563eb"/>
+    <text x="692" y="441" fill="#526070">37k nodes, depth 4.27</text>
   </g>
 
   <rect x="44" y="494" width="872" height="38" rx="8" fill="#ffffff" stroke="#e5e7eb"/>
