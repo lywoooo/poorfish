@@ -1,8 +1,8 @@
 # poorfish
 
-poorfish is a Unity/C# chess engine I built to study how search and evaluation changes affect gameplay.
+*Poorfish* is a Unity/C# chess engine I built to study how search and evaluation changes affect gameplay.
 
-It started as a playable chess project, but I expanded it into an experiment system: the engine can play AI vs AI matches, log what it searched, and compare different versions under controlled conditions. The main lesson so far has been that making an engine stronger is not just about adding features. It is also about designing tests that show whether a change actually helped.
+It started as a playable chess project, but it expanded into an experimental system. The engine can play AI vs AI matches, log what it searched, and compare different versions under controlled conditions. The main lesson so far has been that making an engine stronger is not just about adding features. It is also about designing tests that show whether a change actually helped.
 
 ![Chess Screenshot](https://github.com/user-attachments/assets/59b7f82e-e906-4b8c-9ca0-fdbec62a9e7d)
 
@@ -14,13 +14,8 @@ It started as a playable chess project, but I expanded it into an experiment sys
 
 ## What I Built
 
-poorfish supports a full chess game loop in Unity, including legal move generation, castling, en passant, promotion, check, checkmate, stalemate, and game-state tracking.
-
-The important design choice is that the engine logic is separate from the Unity board. Positions can be simulated, searched, logged, and tested without depending on scene objects. That made the project useful as both a game and an analysis tool.
-
 Core pieces:
 
-- `BoardState`, a 64-square board model
 - legal move generation and rule validation
 - minimax search with alpha-beta pruning
 - iterative deepening, move ordering, and transposition table caching
@@ -30,11 +25,11 @@ Core pieces:
 
 ## Experiment Design
 
-My first AI-vs-AI tests were easy to misread. A version could look stronger because of the side it played, the position it started from, or mismatched engine settings. That pushed me to treat the match runner as part of the engineering problem.
+Although my first AI-vs-AI tests were flawed, giving a version of the engine an unfair advantage because of the side it played, the position it started from, or mismatched engine settings, it pushed me to treat the match runner as part of the engineering problem. 
 
-The current controlled tests use:
+My improved control test environment uses:
 
-- balanced random FEN starting positions
+- balanced random FEN starting positions 
 - paired games where each position is played with colors swapped
 - fixed batch settings
 - consistent CSV, PGN, and ply-level logs
@@ -67,11 +62,11 @@ The `V9_OpeningBook` result is included with context: these tests start from ran
 
 The biggest lesson so far is that deeper search is not automatically better chess. When the evaluation function was weak, searching deeper often led to repetition instead of progress.
 
-That shifted my focus from simply adding features to testing whether each change improved play in a measurable way. The match runner, logs, profiles, and starting positions became just as important as the engine changes themselves.
+That shifted my focus from simply adding features to testing whether each change measurably improved play. The match runner, logs, profiles, and starting positions became just as important as the engine changes themselves.
 
 ## Current Focus
 
-poorfish is still being developed. Current goals:
+*Poorfish* is still being developed. Current goals:
 
 - reduce repetition and safe-loop behavior
 - improve evaluation pressure in winning positions
